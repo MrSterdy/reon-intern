@@ -1,11 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, UpdateResult } from 'typeorm';
+import { IsNull, Not, Repository, UpdateResult } from 'typeorm';
 import { AccountEntity } from './account.entity';
 
 type InstallAccountPayload = {
     accountId: string;
     subdomain: string;
+    accessToken: string;
+    refreshToken: string;
+};
+
+type UpdateAccountTokensPayload = {
+    accountId: string;
     accessToken: string;
     refreshToken: string;
 };
@@ -23,6 +29,16 @@ export class AccountRepository {
         return this.repository.findOne({ where: { accountId } });
     }
 
+    public async findInstalledAccountsWithTokens(): Promise<AccountEntity[]> {
+        return this.repository.find({
+            where: {
+                isInstalled: true,
+                accessToken: Not(IsNull()),
+                refreshToken: Not(IsNull()),
+            },
+        });
+    }
+
     public async saveInstalledAccount(
         payload: InstallAccountPayload,
     ): Promise<AccountEntity> {
@@ -36,6 +52,18 @@ export class AccountRepository {
         account.isInstalled = true;
 
         return this.repository.save(account);
+    }
+
+    public async updateTokens(
+        payload: UpdateAccountTokensPayload,
+    ): Promise<UpdateResult> {
+        return this.repository.update(
+            { accountId: payload.accountId },
+            {
+                accessToken: payload.accessToken,
+                refreshToken: payload.refreshToken,
+            },
+        );
     }
 
     public async markUninstalled(accountId: string): Promise<UpdateResult> {

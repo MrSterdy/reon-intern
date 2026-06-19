@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
 import { isValidAmoUninstallHookSignature } from '../amo/helpers/amo-uninstall-hook-signature.helper';
@@ -9,6 +9,8 @@ import { AmoOauthUninstallQueryDto } from './dto/amo-oauth-uninstall-query.dto';
 
 @Injectable()
 export class AccountService {
+    private readonly logger = new Logger(AccountService.name);
+
     public constructor(
         private readonly accountRepository: AccountRepository,
         private readonly amoApiService: AmoApiService,
@@ -43,6 +45,36 @@ export class AccountService {
         this.assertValidUninstallSignature(query);
 
         await this.accountRepository.markUninstalled(query.accountId);
+    }
+
+    public async refreshInstalledAccountTokens(): Promise<void> {
+        const accounts =
+            await this.accountRepository.findInstalledAccountsWithTokens();
+
+        for (const account of accounts) {
+            if (account.refreshToken === null) {
+                continue;
+            }
+
+            try {
+                const tokenResponse =
+                    await this.amoApiService.refreshAccessToken(
+                        account.subdomain,
+                        account.refreshToken,
+                    );
+
+                await this.accountRepository.updateTokens({
+                    accountId: account.accountId,
+                    accessToken: tokenResponse.accessToken,
+                    refreshToken: tokenResponse.refreshToken,
+                });
+            } catch (error) {
+                this.logger.error(
+                    `Failed to refresh tokens for amoCRM account ${account.accountId}`,
+                    error instanceof Error ? error.stack : undefined,
+                );
+            }
+        }
     }
 
     private assertValidUninstallSignature(

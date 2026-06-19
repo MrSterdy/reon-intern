@@ -56,6 +56,43 @@ export class AmoApiService {
         };
     }
 
+    public async refreshAccessToken(
+        referer: string,
+        refreshToken: string,
+    ): Promise<AmoTokenResponse> {
+        const accountBaseUrl = this.buildAccountBaseUrl(referer);
+        const body = await this.requestJson<RawAmoTokenResponse>(
+            `${accountBaseUrl}/oauth2/access_token`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                data: {
+                    client_id:
+                        this.configService.getOrThrow<string>('amo.clientId'),
+                    client_secret:
+                        this.configService.getOrThrow<string>(
+                            'amo.clientSecret',
+                        ),
+                    grant_type: 'refresh_token',
+                    refresh_token: refreshToken,
+                    redirect_uri:
+                        this.configService.getOrThrow<string>(
+                            'amo.redirectUri',
+                        ),
+                },
+            },
+            isRawAmoTokenResponse,
+            'amoCRM token refresh response is invalid',
+        );
+
+        return {
+            accessToken: body.access_token,
+            refreshToken: body.refresh_token,
+        };
+    }
+
     public async getAccount(
         referer: string,
         accessToken: string,
