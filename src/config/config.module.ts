@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { amoConfig } from './amo.config';
 import { appConfig } from './app.config';
 import { databaseConfig } from './database.config';
 import { configurationValidationSchema } from './config.schema';
@@ -14,7 +15,7 @@ import { configurationValidationSchema } from './config.schema';
                 '.env.local',
                 '.env',
             ],
-            load: [appConfig, databaseConfig],
+            load: [appConfig, databaseConfig, amoConfig],
             validationSchema: configurationValidationSchema,
             validationOptions: {
                 abortEarly: true,

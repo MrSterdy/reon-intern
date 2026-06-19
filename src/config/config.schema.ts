@@ -10,6 +10,11 @@ export type ValidatedConfig = {
     [Env.PostgresPassword]: string;
     [Env.PostgresDatabase]: string;
     [Env.EncryptionKey]: string;
+    [Env.AmoClientId]: string;
+    [Env.AmoClientSecret]: string;
+    [Env.AmoRedirectUri]: string;
+    [Env.AmoIntegrationBaseUrl]: string;
+    [Env.AmoUninstallWebhookUrl]: string;
 };
 
 export type ValidatedDatabaseConfig = Pick<
@@ -36,6 +41,11 @@ export const configurationValidationSchema = Joi.object<ValidatedConfig>({
         .default('development'),
     ...databaseConfigurationSchema,
     [Env.EncryptionKey]: Joi.string().min(32).required(),
+    [Env.AmoClientId]: Joi.string().required(),
+    [Env.AmoClientSecret]: Joi.string().required(),
+    [Env.AmoRedirectUri]: Joi.string().uri().required(),
+    [Env.AmoIntegrationBaseUrl]: Joi.string().uri().required(),
+    [Env.AmoUninstallWebhookUrl]: Joi.string().uri().required(),
 });
 
 export const databaseConfigurationValidationSchema =

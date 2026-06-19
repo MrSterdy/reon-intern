@@ -5,6 +5,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppConfigModule } from '../config/config.module';
 import { createTypeOrmOptions } from '../config/typeorm.config';
+import { AccountModule } from '../modules/account/account.module';
+import { AmoModule } from '../modules/amo/amo.module';
 
 @Module({
     imports: [
@@ -13,6 +15,8 @@ import { createTypeOrmOptions } from '../config/typeorm.config';
             inject: [ConfigService],
             useFactory: createTypeOrmOptions,
         }),
+        AccountModule,
+        AmoModule,
     ],
     controllers: [AppController],
     providers: [AppService],
