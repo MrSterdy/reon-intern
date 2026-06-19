@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
 import { isValidAmoUninstallHookSignature } from '../amo/amo.helpers';
 import { CustomFieldService } from '../custom-field/custom-field.service';
+import { WebhookService } from '../webhook/webhook.service';
 import { AccountEntity } from './account.entity';
 import { AccountRepository } from './account.repository';
 import { AmoOauthInstallQueryDto } from './dto/amo-oauth-install-query.dto';
@@ -16,6 +17,7 @@ export class AccountService {
         private readonly accountRepository: AccountRepository,
         private readonly amoApiService: AmoApiService,
         private readonly customFieldService: CustomFieldService,
+        private readonly webhookService: WebhookService,
         private readonly configService: ConfigService,
     ) {}
 
@@ -41,6 +43,7 @@ export class AccountService {
         });
 
         await this.customFieldService.syncForAccount(account);
+        await this.webhookService.syncForAccount(account);
 
         return account;
     }
