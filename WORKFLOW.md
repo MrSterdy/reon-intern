@@ -2,15 +2,16 @@
 
 ## Переменные окружения
 
-| Переменная          | Тип      | Описание                                                   |
-|---------------------|----------|------------------------------------------------------------|
-| `PORT`              | `number` | Порт HTTP-сервера. По умолчанию `3000`.                    |
-| `NODE_ENV`          | `string` | Окружение запуска: `development`, `production` или `test`. |
-| `POSTGRES_HOST`     | `string` | Хост PostgreSQL.                                           |
-| `POSTGRES_PORT`     | `number` | Порт PostgreSQL.                                           |
-| `POSTGRES_USERNAME` | `string` | Пользователь PostgreSQL.                                   |
-| `POSTGRES_PASSWORD` | `string` | Пароль пользователя PostgreSQL.                            |
-| `POSTGRES_DATABASE` | `string` | Имя базы данных PostgreSQL.                                |
+| Переменная          | Тип      | Описание                                                    |
+|---------------------|----------|-------------------------------------------------------------|
+| `PORT`              | `number` | Порт HTTP-сервера. По умолчанию `3000`.                     |
+| `NODE_ENV`          | `string` | Окружение запуска: `development`, `production` или `test`.  |
+| `POSTGRES_HOST`     | `string` | Хост PostgreSQL.                                            |
+| `POSTGRES_PORT`     | `number` | Порт PostgreSQL.                                            |
+| `POSTGRES_USERNAME` | `string` | Пользователь PostgreSQL.                                    |
+| `POSTGRES_PASSWORD` | `string` | Пароль пользователя PostgreSQL.                             |
+| `POSTGRES_DATABASE` | `string` | Имя базы данных PostgreSQL.                                 |
+| `ENCRYPTION_KEY`    | `string` | Ключ шифрования чувствительных колонок. Минимум 32 символа. |
 
 ## База данных
 

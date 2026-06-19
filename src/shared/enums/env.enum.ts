@@ -6,4 +6,5 @@ export enum Env {
     PostgresUsername = 'POSTGRES_USERNAME',
     PostgresPassword = 'POSTGRES_PASSWORD',
     PostgresDatabase = 'POSTGRES_DATABASE',
+    EncryptionKey = 'ENCRYPTION_KEY',
 }
