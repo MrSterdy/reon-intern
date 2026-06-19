@@ -1,14 +1,8 @@
 import { createHmac } from 'node:crypto';
-import { isEqualSignature } from '../../../shared/helpers/signature.helper';
+import { isEqualSignature } from '../../shared/helpers/signature.helper';
+import { AmoUninstallHookSignaturePayload } from './amo.types';
 
 const AMO_UNINSTALL_SIGNATURE_ALGORITHM = 'sha256';
-
-type AmoUninstallHookSignaturePayload = {
-    accountId: string;
-    clientId: string;
-    clientSecret: string;
-    signature: string;
-};
 
 export function isValidAmoUninstallHookSignature(
     payload: AmoUninstallHookSignaturePayload,

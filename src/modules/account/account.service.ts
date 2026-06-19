@@ -1,7 +1,7 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
-import { isValidAmoUninstallHookSignature } from '../amo/helpers/amo-uninstall-hook-signature.helper';
+import { isValidAmoUninstallHookSignature } from '../amo/amo.helpers';
 import { AccountEntity } from './account.entity';
 import { AccountRepository } from './account.repository';
 import { AmoOauthInstallQueryDto } from './dto/amo-oauth-install-query.dto';

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { AccountService } from '../account.service';
-import { EVERY_TWELVE_HOURS_CRON } from '../../../shared/consts/cron';
+import { AccountService } from './account.service';
+import { EVERY_TWELVE_HOURS_CRON } from '../../shared/consts/cron';
 
 @Injectable()
 export class AccountCronService {

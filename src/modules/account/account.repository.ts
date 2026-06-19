@@ -2,19 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository, UpdateResult } from 'typeorm';
 import { AccountEntity } from './account.entity';
-
-type InstallAccountPayload = {
-    accountId: string;
-    subdomain: string;
-    accessToken: string;
-    refreshToken: string;
-};
-
-type UpdateAccountTokensPayload = {
-    accountId: string;
-    accessToken: string;
-    refreshToken: string;
-};
+import {
+    InstallAccountPayload,
+    UpdateAccountTokensPayload,
+} from './account.types';
 
 @Injectable()
 export class AccountRepository {
