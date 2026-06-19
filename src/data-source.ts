@@ -3,11 +3,11 @@ import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 import { join } from 'node:path';
 import { Env } from './shared/enums/env.enum';
-import { validateConfig } from './config/config.schema';
+import { validateDatabaseConfig } from './config/config.schema';
 
 config();
 
-const env = validateConfig(process.env);
+const env = validateDatabaseConfig(process.env);
 
 export default new DataSource({
     type: 'postgres',
@@ -17,6 +17,6 @@ export default new DataSource({
     password: env[Env.PostgresPassword],
     database: env[Env.PostgresDatabase],
     entities: [join(__dirname, '**', '*.entity{.ts,.js}')],
-    migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
+    migrations: [join(__dirname, 'generated', 'migrations', '*{.ts,.js}')],
     synchronize: false,
 });

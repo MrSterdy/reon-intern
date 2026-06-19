@@ -14,7 +14,9 @@ export function createTypeOrmOptions(
         database: configService.getOrThrow<string>('database.database'),
         autoLoadEntities: true,
         synchronize: false,
-        migrations: [join(__dirname, '..', 'migrations', '*{.ts,.js}')],
+        migrations: [
+            join(__dirname, '..', 'generated', 'migrations', '*{.ts,.js}'),
+        ],
         migrationsRun: false,
     };
 }

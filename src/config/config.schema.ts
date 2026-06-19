@@ -9,6 +9,24 @@ export type ValidatedConfig = {
     [Env.PostgresUsername]: string;
     [Env.PostgresPassword]: string;
     [Env.PostgresDatabase]: string;
+    [Env.EncryptionKey]: string;
+};
+
+export type ValidatedDatabaseConfig = Pick<
+    ValidatedConfig,
+    | Env.PostgresHost
+    | Env.PostgresPort
+    | Env.PostgresUsername
+    | Env.PostgresPassword
+    | Env.PostgresDatabase
+>;
+
+const databaseConfigurationSchema = {
+    [Env.PostgresHost]: Joi.string().required(),
+    [Env.PostgresPort]: Joi.number().port().required(),
+    [Env.PostgresUsername]: Joi.string().required(),
+    [Env.PostgresPassword]: Joi.string().required(),
+    [Env.PostgresDatabase]: Joi.string().required(),
 };
 
 export const configurationValidationSchema = Joi.object<ValidatedConfig>({
@@ -16,21 +34,24 @@ export const configurationValidationSchema = Joi.object<ValidatedConfig>({
     [Env.NodeEnv]: Joi.string()
         .valid('development', 'production', 'test')
         .default('development'),
-    [Env.PostgresHost]: Joi.string().required(),
-    [Env.PostgresPort]: Joi.number().port().required(),
-    [Env.PostgresUsername]: Joi.string().required(),
-    [Env.PostgresPassword]: Joi.string().required(),
-    [Env.PostgresDatabase]: Joi.string().required(),
+    ...databaseConfigurationSchema,
+    [Env.EncryptionKey]: Joi.string().min(32).required(),
 });
 
-export function validateConfig(
+export const databaseConfigurationValidationSchema =
+    Joi.object<ValidatedDatabaseConfig>(databaseConfigurationSchema);
+
+function validateSchema<TConfig>(
+    schema: Joi.ObjectSchema<TConfig>,
     config: Record<string, unknown>,
-): ValidatedConfig {
-    const validationResult: Joi.ValidationResult<ValidatedConfig> =
-        configurationValidationSchema.validate(config, {
+): TConfig {
+    const validationResult: Joi.ValidationResult<TConfig> = schema.validate(
+        config,
+        {
             abortEarly: true,
             allowUnknown: true,
-        });
+        },
+    );
 
     if (validationResult.error) {
         throw new Error(
@@ -39,4 +60,10 @@ export function validateConfig(
     }
 
     return validationResult.value;
+}
+
+export function validateDatabaseConfig(
+    config: Record<string, unknown>,
+): ValidatedDatabaseConfig {
+    return validateSchema(databaseConfigurationValidationSchema, config);
 }
