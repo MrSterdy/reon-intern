@@ -1,0 +1,15 @@
+export enum Env {
+    AppPort = 'PORT',
+    NodeEnv = 'NODE_ENV',
+    PostgresHost = 'POSTGRES_HOST',
+    PostgresPort = 'POSTGRES_PORT',
+    PostgresUsername = 'POSTGRES_USERNAME',
+    PostgresPassword = 'POSTGRES_PASSWORD',
+    PostgresDatabase = 'POSTGRES_DATABASE',
+    EncryptionKey = 'ENCRYPTION_KEY',
+    AmoClientId = 'AMO_CLIENT_ID',
+    AmoClientSecret = 'AMO_CLIENT_SECRET',
+    AmoRedirectUri = 'AMO_REDIRECT_URI',
+    AmoIntegrationBaseUrl = 'AMO_INTEGRATION_BASE_URL',
+    AmoUninstallWebhookUrl = 'AMO_UNINSTALL_WEBHOOK_URL',
+}
