@@ -10,13 +10,13 @@ config();
 const env = validateConfig(process.env);
 
 export default new DataSource({
-  type: 'postgres',
-  host: env[Env.PostgresHost],
-  port: env[Env.PostgresPort],
-  username: env[Env.PostgresUsername],
-  password: env[Env.PostgresPassword],
-  database: env[Env.PostgresDatabase],
-  entities: [join(__dirname, '**', '*.entity{.ts,.js}')],
-  migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
-  synchronize: false,
+    type: 'postgres',
+    host: env[Env.PostgresHost],
+    port: env[Env.PostgresPort],
+    username: env[Env.PostgresUsername],
+    password: env[Env.PostgresPassword],
+    database: env[Env.PostgresDatabase],
+    entities: [join(__dirname, '**', '*.entity{.ts,.js}')],
+    migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
+    synchronize: false,
 });
