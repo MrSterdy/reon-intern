@@ -2,10 +2,18 @@ import { BadGatewayException, Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { isAmoAccountResponse, isRawAmoTokenResponse } from './amo-api.guards';
+import {
+    isAmoAccountResponse,
+    isRawAmoCustomFieldListResponse,
+    isRawAmoTokenResponse,
+} from './amo-api.guards';
 import {
     AmoAccountResponse,
+    AmoCustomFieldEntityType,
+    AmoCustomFieldPayload,
+    AmoCustomFieldResponse,
     AmoTokenResponse,
+    RawAmoCustomFieldListResponse,
     RawAmoTokenResponse,
 } from './amo-api.types';
 import { ResponseGuard } from '../api.types';
@@ -115,6 +123,64 @@ export class AmoApiService {
         };
     }
 
+    public async getCustomFields(
+        referer: string,
+        accessToken: string,
+        entityType: AmoCustomFieldEntityType,
+    ): Promise<AmoCustomFieldResponse[]> {
+        const customFields: AmoCustomFieldResponse[] = [];
+        let page = 1;
+        let pageCount = 1;
+
+        do {
+            const body = await this.requestJson<RawAmoCustomFieldListResponse>(
+                `${this.buildAccountBaseUrl(referer)}/api/v4/${entityType}/custom_fields`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                    params: {
+                        page,
+                        limit: 250,
+                    },
+                },
+                isRawAmoCustomFieldListResponse,
+                'amoCRM custom fields response is invalid',
+            );
+
+            customFields.push(...this.mapCustomFieldsResponse(body));
+
+            pageCount =
+                typeof body._page_count === 'number' ? body._page_count : page;
+            page += 1;
+        } while (page <= pageCount);
+
+        return customFields;
+    }
+
+    public async createCustomFields(
+        referer: string,
+        accessToken: string,
+        entityType: AmoCustomFieldEntityType,
+        fields: AmoCustomFieldPayload[],
+    ): Promise<AmoCustomFieldResponse[]> {
+        const body = await this.requestJson<RawAmoCustomFieldListResponse>(
+            `${this.buildAccountBaseUrl(referer)}/api/v4/${entityType}/custom_fields`,
+            {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                data: fields,
+            },
+            isRawAmoCustomFieldListResponse,
+            'amoCRM custom fields creation response is invalid',
+        );
+
+        return this.mapCustomFieldsResponse(body);
+    }
+
     private buildAccountBaseUrl(referer: string): string {
         const normalizedReferer = referer.startsWith('http')
             ? referer
@@ -124,6 +190,18 @@ export class AmoApiService {
         const url = new URL(normalizedReferer);
 
         return url.origin;
+    }
+
+    private mapCustomFieldsResponse(
+        body: RawAmoCustomFieldListResponse,
+    ): AmoCustomFieldResponse[] {
+        const customFields = body._embedded?.custom_fields ?? [];
+
+        return customFields.map((customField) => ({
+            id: customField.id,
+            name: customField.name,
+            type: customField.type,
+        }));
     }
 
     private async requestJson<TResponse>(
