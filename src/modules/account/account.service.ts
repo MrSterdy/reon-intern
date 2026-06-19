@@ -2,6 +2,7 @@ import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
 import { isValidAmoUninstallHookSignature } from '../amo/amo.helpers';
+import { CustomFieldService } from '../custom-field/custom-field.service';
 import { AccountEntity } from './account.entity';
 import { AccountRepository } from './account.repository';
 import { AmoOauthInstallQueryDto } from './dto/amo-oauth-install-query.dto';
@@ -14,6 +15,7 @@ export class AccountService {
     public constructor(
         private readonly accountRepository: AccountRepository,
         private readonly amoApiService: AmoApiService,
+        private readonly customFieldService: CustomFieldService,
         private readonly configService: ConfigService,
     ) {}
 
@@ -31,12 +33,16 @@ export class AccountService {
             tokenResponse.accessToken,
         );
 
-        return this.accountRepository.saveInstalledAccount({
+        const account = await this.accountRepository.saveInstalledAccount({
             accountId: String(amoAccount.id),
             subdomain: amoAccount.subdomain,
             accessToken: tokenResponse.accessToken,
             refreshToken: tokenResponse.refreshToken,
         });
+
+        await this.customFieldService.syncForAccount(account);
+
+        return account;
     }
 
     public async handleUninstall(
