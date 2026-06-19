@@ -12,4 +12,8 @@ export enum Env {
     AmoRedirectUri = 'AMO_REDIRECT_URI',
     AmoIntegrationBaseUrl = 'AMO_INTEGRATION_BASE_URL',
     AmoUninstallWebhookUrl = 'AMO_UNINSTALL_WEBHOOK_URL',
+    AmoWebhookContactCreatedUrl = 'AMO_WEBHOOK_CONTACT_CREATED_URL',
+    AmoWebhookContactUpdatedUrl = 'AMO_WEBHOOK_CONTACT_UPDATED_URL',
+    AmoWebhookLeadCreatedUrl = 'AMO_WEBHOOK_LEAD_CREATED_URL',
+    AmoWebhookLeadUpdatedUrl = 'AMO_WEBHOOK_LEAD_UPDATED_URL',
 }

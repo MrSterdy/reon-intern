@@ -2,21 +2,25 @@
 
 ## Переменные окружения
 
-| Переменная                  | Тип      | Описание                                                    |
-|-----------------------------|----------|-------------------------------------------------------------|
-| `PORT`                      | `number` | Порт HTTP-сервера. По умолчанию `3000`.                     |
-| `NODE_ENV`                  | `string` | Окружение запуска: `development`, `production` или `test`.  |
-| `POSTGRES_HOST`             | `string` | Хост PostgreSQL.                                            |
-| `POSTGRES_PORT`             | `number` | Порт PostgreSQL.                                            |
-| `POSTGRES_USERNAME`         | `string` | Пользователь PostgreSQL.                                    |
-| `POSTGRES_PASSWORD`         | `string` | Пароль пользователя PostgreSQL.                             |
-| `POSTGRES_DATABASE`         | `string` | Имя базы данных PostgreSQL.                                 |
-| `ENCRYPTION_KEY`            | `string` | Ключ шифрования чувствительных колонок. Минимум 32 символа. |
-| `AMO_CLIENT_ID`             | `string` | ID OAuth-интеграции amoCRM.                                 |
-| `AMO_CLIENT_SECRET`         | `string` | Секретный ключ OAuth-интеграции amoCRM.                     |
-| `AMO_REDIRECT_URI`          | `string` | Redirect URI OAuth-интеграции amoCRM.                       |
-| `AMO_INTEGRATION_BASE_URL`  | `string` | Базовый URL интеграции amoCRM.                              |
-| `AMO_UNINSTALL_WEBHOOK_URL` | `string` | URL хука отключения интеграции amoCRM.                      |
+| Переменная                        | Тип      | Описание                                                    |
+|-----------------------------------|----------|-------------------------------------------------------------|
+| `PORT`                            | `number` | Порт HTTP-сервера. По умолчанию `3000`.                     |
+| `NODE_ENV`                        | `string` | Окружение запуска: `development`, `production` или `test`.  |
+| `POSTGRES_HOST`                   | `string` | Хост PostgreSQL.                                            |
+| `POSTGRES_PORT`                   | `number` | Порт PostgreSQL.                                            |
+| `POSTGRES_USERNAME`               | `string` | Пользователь PostgreSQL.                                    |
+| `POSTGRES_PASSWORD`               | `string` | Пароль пользователя PostgreSQL.                             |
+| `POSTGRES_DATABASE`               | `string` | Имя базы данных PostgreSQL.                                 |
+| `ENCRYPTION_KEY`                  | `string` | Ключ шифрования чувствительных колонок. Минимум 32 символа. |
+| `AMO_CLIENT_ID`                   | `string` | ID OAuth-интеграции amoCRM.                                 |
+| `AMO_CLIENT_SECRET`               | `string` | Секретный ключ OAuth-интеграции amoCRM.                     |
+| `AMO_REDIRECT_URI`                | `string` | Redirect URI OAuth-интеграции amoCRM.                       |
+| `AMO_INTEGRATION_BASE_URL`        | `string` | Базовый URL интеграции amoCRM.                              |
+| `AMO_UNINSTALL_WEBHOOK_URL`       | `string` | URL хука отключения интеграции amoCRM.                      |
+| `AMO_WEBHOOK_CONTACT_CREATED_URL` | `string` | URL вебхука amoCRM для события создания контакта.           |
+| `AMO_WEBHOOK_CONTACT_UPDATED_URL` | `string` | URL вебхука amoCRM для события изменения контакта.          |
+| `AMO_WEBHOOK_LEAD_CREATED_URL`    | `string` | URL вебхука amoCRM для события создания сделки.             |
+| `AMO_WEBHOOK_LEAD_UPDATED_URL`    | `string` | URL вебхука amoCRM для события изменения сделки.            |
 
 ## База данных
 

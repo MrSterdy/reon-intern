@@ -15,6 +15,10 @@ export type ValidatedConfig = {
     [Env.AmoRedirectUri]: string;
     [Env.AmoIntegrationBaseUrl]: string;
     [Env.AmoUninstallWebhookUrl]: string;
+    [Env.AmoWebhookContactCreatedUrl]: string;
+    [Env.AmoWebhookContactUpdatedUrl]: string;
+    [Env.AmoWebhookLeadCreatedUrl]: string;
+    [Env.AmoWebhookLeadUpdatedUrl]: string;
 };
 
 export type ValidatedDatabaseConfig = Pick<
@@ -46,6 +50,10 @@ export const configurationValidationSchema = Joi.object<ValidatedConfig>({
     [Env.AmoRedirectUri]: Joi.string().uri().required(),
     [Env.AmoIntegrationBaseUrl]: Joi.string().uri().required(),
     [Env.AmoUninstallWebhookUrl]: Joi.string().uri().required(),
+    [Env.AmoWebhookContactCreatedUrl]: Joi.string().uri().required(),
+    [Env.AmoWebhookContactUpdatedUrl]: Joi.string().uri().required(),
+    [Env.AmoWebhookLeadCreatedUrl]: Joi.string().uri().required(),
+    [Env.AmoWebhookLeadUpdatedUrl]: Joi.string().uri().required(),
 });
 
 export const databaseConfigurationValidationSchema =
