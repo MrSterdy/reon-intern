@@ -118,7 +118,9 @@ export class AmoApiService {
     private buildAccountBaseUrl(referer: string): string {
         const normalizedReferer = referer.startsWith('http')
             ? referer
-            : `https://${referer}`;
+            : referer.includes('.')
+              ? `https://${referer}`
+              : `https://${referer}.amocrm.ru`;
         const url = new URL(normalizedReferer);
 
         return url.origin;
