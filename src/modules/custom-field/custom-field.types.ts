@@ -21,3 +21,9 @@ export type SaveCustomFieldPayload = {
     fieldType: AmoCustomFieldType;
     fieldId: string;
 };
+
+export type SyncedAmoCustomField = {
+    id: number | string;
+    name: string;
+    type: string;
+};
