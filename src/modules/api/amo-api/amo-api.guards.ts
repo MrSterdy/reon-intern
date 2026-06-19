@@ -1,5 +1,6 @@
 import {
     AmoAccountResponse,
+    AmoWebhookResponse,
     RawAmoCustomFieldListResponse,
     RawAmoCustomFieldResponse,
     RawAmoTokenResponse,
@@ -70,5 +71,23 @@ export function isRawAmoCustomFieldListResponse(
     return (
         Array.isArray(embedded.custom_fields) &&
         embedded.custom_fields.every(isRawAmoCustomFieldResponse)
+    );
+}
+
+export function isAmoWebhookResponse(
+    body: unknown,
+): body is AmoWebhookResponse {
+    return (
+        typeof body === 'object' &&
+        body !== null &&
+        'id' in body &&
+        'destination' in body &&
+        'disabled' in body &&
+        'settings' in body &&
+        (typeof body.id === 'number' || typeof body.id === 'string') &&
+        typeof body.destination === 'string' &&
+        typeof body.disabled === 'boolean' &&
+        Array.isArray(body.settings) &&
+        body.settings.every((setting) => typeof setting === 'string')
     );
 }

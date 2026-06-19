@@ -48,3 +48,21 @@ export type AmoCustomFieldResponse = {
     name: string;
     type: string;
 };
+
+export type AmoWebhookEvent =
+    | 'add_contact'
+    | 'update_contact'
+    | 'add_lead'
+    | 'update_lead';
+
+export type AmoWebhookPayload = {
+    destination: string;
+    settings: AmoWebhookEvent[];
+};
+
+export type AmoWebhookResponse = {
+    id: number | string;
+    destination: string;
+    disabled: boolean;
+    settings: string[];
+};

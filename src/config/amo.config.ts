@@ -7,4 +7,10 @@ export const amoConfig = registerAs('amo', () => ({
     redirectUri: process.env[Env.AmoRedirectUri],
     integrationBaseUrl: process.env[Env.AmoIntegrationBaseUrl],
     uninstallWebhookUrl: process.env[Env.AmoUninstallWebhookUrl],
+    webhooks: {
+        contactCreatedUrl: process.env[Env.AmoWebhookContactCreatedUrl],
+        contactUpdatedUrl: process.env[Env.AmoWebhookContactUpdatedUrl],
+        leadCreatedUrl: process.env[Env.AmoWebhookLeadCreatedUrl],
+        leadUpdatedUrl: process.env[Env.AmoWebhookLeadUpdatedUrl],
+    },
 }));

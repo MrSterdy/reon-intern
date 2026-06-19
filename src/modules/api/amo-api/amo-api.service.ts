@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { AxiosRequestConfig, AxiosResponse } from 'axios';
 import {
     isAmoAccountResponse,
+    isAmoWebhookResponse,
     isRawAmoCustomFieldListResponse,
     isRawAmoTokenResponse,
 } from './amo-api.guards';
@@ -13,6 +14,8 @@ import {
     AmoCustomFieldPayload,
     AmoCustomFieldResponse,
     AmoTokenResponse,
+    AmoWebhookPayload,
+    AmoWebhookResponse,
     RawAmoCustomFieldListResponse,
     RawAmoTokenResponse,
 } from './amo-api.types';
@@ -179,6 +182,26 @@ export class AmoApiService {
         );
 
         return this.mapCustomFieldsResponse(body);
+    }
+
+    public async subscribeWebhook(
+        referer: string,
+        accessToken: string,
+        payload: AmoWebhookPayload,
+    ): Promise<AmoWebhookResponse> {
+        return this.requestJson<AmoWebhookResponse>(
+            `${this.buildAccountBaseUrl(referer)}/api/v4/webhooks`,
+            {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                data: payload,
+            },
+            isAmoWebhookResponse,
+            'amoCRM webhook subscription response is invalid',
+        );
     }
 
     private buildAccountBaseUrl(referer: string): string {
