@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { CustomFieldEntity } from './custom-field.entity';
 import { SaveCustomFieldPayload } from './custom-field.types';
 
@@ -8,15 +8,21 @@ import { SaveCustomFieldPayload } from './custom-field.types';
 export class CustomFieldRepository {
     public constructor(
         @InjectRepository(CustomFieldEntity)
-        private readonly repository: Repository<CustomFieldEntity>,
+        private readonly dataSource: DataSource,
     ) {}
 
-    public async saveCustomField(
-        payload: SaveCustomFieldPayload,
+    public async saveCustomFields(
+        payloads: SaveCustomFieldPayload[],
     ): Promise<void> {
-        await this.repository.upsert(payload, {
-            conflictPaths: ['accountId', 'entityType', 'fieldName'],
-            skipUpdateIfNoValuesChanged: true,
+        if (payloads.length === 0) {
+            return;
+        }
+
+        await this.dataSource.transaction(async (manager) => {
+            await manager.upsert(CustomFieldEntity, payloads, {
+                conflictPaths: ['accountId', 'entityType', 'fieldName'],
+                skipUpdateIfNoValuesChanged: true,
+            });
         });
     }
 }
