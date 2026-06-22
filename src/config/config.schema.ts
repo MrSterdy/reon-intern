@@ -1,5 +1,6 @@
 import * as Joi from 'joi';
 import { Env } from '../shared/enums/env.enum';
+import { validateJoiSchema } from '../shared/helpers/joi.helpers';
 import { ValidatedConfig } from './config.types';
 
 export const configurationValidationSchema = Joi.object<ValidatedConfig>({
@@ -24,16 +25,16 @@ export function validateSchema<TConfig>(
     schema: Joi.ObjectSchema<TConfig>,
     config: Record<string, unknown>,
 ): TConfig {
-    const validationResult = schema.validate(config, {
-        abortEarly: true,
-        allowUnknown: true,
-    });
-
-    if (validationResult.error) {
+    try {
+        return validateJoiSchema(schema, config, {
+            abortEarly: true,
+            allowUnknown: true,
+        });
+    } catch (error) {
         throw new Error(
-            `Config validation error: ${validationResult.error.message}`,
+            `Config validation error: ${
+                error instanceof Error ? error.message : String(error)
+            }`,
         );
     }
-
-    return validationResult.value;
 }

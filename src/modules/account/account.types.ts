@@ -10,3 +10,18 @@ export type UpdateAccountTokensPayload = {
     accessToken: string;
     refreshToken: string;
 };
+
+export type AmoOauthInstallCommand = {
+    code: string;
+    referer: string;
+    state?: string;
+    fromWidget?: string;
+    platform?: number;
+    redirectUri?: string;
+};
+
+export type AmoOauthUninstallCommand = {
+    accountId: string;
+    clientUuid: string;
+    signature: string;
+};

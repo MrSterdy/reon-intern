@@ -1,15 +1,17 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
-import { isValidAmoUninstallHookSignature } from '../amo/amo.helpers';
 import { CustomFieldService } from '../custom-field/custom-field.service';
 import { WebhookService } from '../webhook/webhook.service';
 import { Env } from '../../shared/enums/env.enum';
 import { AccountEntity } from './account.entity';
 import { AccountRepository } from './account.repository';
-import { AmoOauthInstallQueryDto } from './dto/amo-oauth-install-query.dto';
-import { AmoOauthUninstallQueryDto } from './dto/amo-oauth-uninstall-query.dto';
 import { ACCOUNT_TOKEN_REFRESH_BATCH_SIZE } from './account.consts';
+import {
+    AmoOauthInstallCommand,
+    AmoOauthUninstallCommand,
+} from './account.types';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 @Injectable()
 export class AccountService {
@@ -24,16 +26,16 @@ export class AccountService {
     ) {}
 
     public async handleInstall(
-        query: AmoOauthInstallQueryDto,
+        command: AmoOauthInstallCommand,
     ): Promise<AccountEntity> {
         const tokenResponse =
             await this.amoApiService.exchangeAuthorizationCode(
-                query.referer,
-                query.code,
-                query.redirectUri,
+                command.referer,
+                command.code,
+                command.redirectUri,
             );
         const amoAccount = await this.amoApiService.getAccount(
-            query.referer,
+            command.referer,
             tokenResponse.accessToken,
         );
 
@@ -59,11 +61,11 @@ export class AccountService {
     }
 
     public async handleUninstall(
-        query: AmoOauthUninstallQueryDto,
+        command: AmoOauthUninstallCommand,
     ): Promise<void> {
-        this.assertValidUninstallSignature(query);
+        this.assertValidUninstallSignature(command);
 
-        await this.accountRepository.markUninstalled(query.accountId);
+        await this.accountRepository.markUninstalled(command.accountId);
     }
 
     public async refreshInstalledAccountTokens(): Promise<void> {
@@ -111,7 +113,7 @@ export class AccountService {
     }
 
     private assertValidUninstallSignature(
-        query: AmoOauthUninstallQueryDto,
+        query: AmoOauthUninstallCommand,
     ): void {
         const clientId = this.configService.getOrThrow<string>(Env.AmoClientId);
         const clientSecret = this.configService.getOrThrow<string>(
@@ -122,14 +124,18 @@ export class AccountService {
             throw new UnauthorizedException('Invalid amoCRM hook client');
         }
 
-        if (
-            !isValidAmoUninstallHookSignature({
-                accountId: query.accountId,
-                clientId,
-                clientSecret,
-                signature: query.signature,
-            })
-        ) {
+        const expectedSignature = createHmac('sha256', clientSecret)
+            .update(`${clientId}|${query.accountId}`)
+            .digest('hex');
+
+        const expectedBuffer = Buffer.from(expectedSignature);
+        const receivedBuffer = Buffer.from(query.signature);
+
+        const isEqualSignature =
+            expectedBuffer.length === receivedBuffer.length &&
+            timingSafeEqual(expectedBuffer, receivedBuffer);
+
+        if (isEqualSignature) {
             throw new UnauthorizedException('Invalid amoCRM hook signature');
         }
     }
