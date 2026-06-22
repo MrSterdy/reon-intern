@@ -9,5 +9,6 @@ import { ContactService } from './contact.service';
     imports: [AccountModule, ApiModule, CustomFieldModule],
     controllers: [ContactWebhookController],
     providers: [ContactService],
+    exports: [ContactService],
 })
 export class ContactModule {}
