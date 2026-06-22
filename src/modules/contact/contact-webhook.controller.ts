@@ -1,18 +1,20 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
-import { ContactService } from './contact.service';
-import type { ContactWebhookBody, ContactWebhookResult } from './contact.types';
+import { ContactWebhookService } from './contact-webhook.service';
+import type { ContactWebhookResult } from './contact.types';
 import { ENDPOINTS } from '../../shared/constants/endpoints';
 
 @Controller(ENDPOINTS.amo.webhooks.contacts.base)
 export class ContactWebhookController {
-    public constructor(private readonly contactService: ContactService) {}
+    public constructor(
+        private readonly contactWebhookService: ContactWebhookService,
+    ) {}
 
     @Post(ENDPOINTS.amo.webhooks.contacts.created)
     @HttpCode(200)
     public async created(
-        @Body() body: ContactWebhookBody,
+        @Body() body: Record<string, unknown>,
     ): Promise<ContactWebhookResult> {
-        await this.contactService.handleWebhook(body, 'add');
+        await this.contactWebhookService.handleWebhook(body, 'add');
 
         return { status: 'accepted' };
     }
@@ -20,9 +22,9 @@ export class ContactWebhookController {
     @Post(ENDPOINTS.amo.webhooks.contacts.updated)
     @HttpCode(200)
     public async updated(
-        @Body() body: ContactWebhookBody,
+        @Body() body: Record<string, unknown>,
     ): Promise<ContactWebhookResult> {
-        await this.contactService.handleWebhook(body, 'update');
+        await this.contactWebhookService.handleWebhook(body, 'update');
 
         return { status: 'accepted' };
     }

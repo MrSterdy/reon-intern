@@ -6,15 +6,8 @@ import { AmoContactResponse } from '../api/amo-api/amo-api.types';
 import { CustomFieldName } from '../custom-field/custom-field.consts';
 import { CustomFieldService } from '../custom-field/custom-field.service';
 import { calculateAgeFromBirthTimestamp } from './contact.helpers';
-import {
-    ContactWebhookAction,
-    ContactWebhookBody,
-    ContactWebhookEntry,
-} from './contact.types';
-import {
-    isRecord,
-    isStringOrNumber,
-} from '../../shared/helpers/object.helpers';
+import { ContactWebhookEntry } from './contact.types';
+import { isStringOrNumber } from '../../shared/helpers/object.helpers';
 import { REQUIRED_CONTACT_FIELD_NAMES } from './contact.consts';
 
 @Injectable()
@@ -27,12 +20,7 @@ export class ContactService {
         private readonly customFieldService: CustomFieldService,
     ) {}
 
-    public async handleWebhook(
-        body: ContactWebhookBody,
-        action: ContactWebhookAction,
-    ): Promise<void> {
-        const entries = this.extractWebhookEntries(body, action);
-
+    public async handleWebhook(entries: ContactWebhookEntry[]): Promise<void> {
         for (const entry of entries) {
             try {
                 await this.processWebhookEntry(entry);
@@ -156,41 +144,5 @@ export class ContactService {
         const numericValue = Number(value);
 
         return Number.isFinite(numericValue) ? numericValue : null;
-    }
-
-    private extractWebhookEntries(
-        body: ContactWebhookBody,
-        action: ContactWebhookAction,
-    ): ContactWebhookEntry[] {
-        const contacts = body.contacts;
-
-        if (!isRecord(contacts)) {
-            return [];
-        }
-
-        const entries = contacts[action];
-        const rawEntries = isRecord(entries) ? Object.values(entries) : [];
-
-        return rawEntries
-            .map((entry) => this.normalizeEntry(entry))
-            .filter((entry): entry is ContactWebhookEntry => entry !== null);
-    }
-
-    private normalizeEntry(entry: unknown): ContactWebhookEntry | null {
-        if (!isRecord(entry) || entry.type !== 'contact') {
-            return null;
-        }
-
-        if (
-            !isStringOrNumber(entry.id) ||
-            !isStringOrNumber(entry.account_id)
-        ) {
-            return null;
-        }
-
-        return {
-            contactId: String(entry.id),
-            accountId: String(entry.account_id),
-        };
     }
 }

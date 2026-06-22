@@ -1,6 +1,17 @@
 export type ContactWebhookAction = 'add' | 'update';
 
-export type ContactWebhookBody = Record<string, unknown>;
+export type AmoContactWebhookEntry = {
+    id: string | number;
+    account_id: string | number;
+    type: 'contact';
+};
+
+export type AmoContactWebhookBody = {
+    contacts: Record<
+        ContactWebhookAction,
+        Record<string, AmoContactWebhookEntry>
+    >;
+};
 
 export type ContactWebhookResult = {
     status: 'accepted';

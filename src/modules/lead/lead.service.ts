@@ -13,18 +13,11 @@ import {
 } from '../custom-field/custom-field.consts';
 import { CustomFieldService } from '../custom-field/custom-field.service';
 import { ContactService } from '../contact/contact.service';
-import {
-    isRecord,
-    isStringOrNumber,
-} from '../../shared/helpers/object.helpers';
+import { isStringOrNumber } from '../../shared/helpers/object.helpers';
 import { LeadPriceCalculatorService } from './lead-price-calculator.service';
 import { LeadTaskService } from './lead-task.service';
 import { REQUIRED_LEAD_FIELD_NAMES } from './lead.consts';
-import {
-    LeadWebhookAction,
-    LeadWebhookBody,
-    LeadWebhookEntry,
-} from './lead.types';
+import { LeadWebhookEntry } from './lead.types';
 
 @Injectable()
 export class LeadService {
@@ -39,12 +32,7 @@ export class LeadService {
         private readonly leadTaskService: LeadTaskService,
     ) {}
 
-    public async handleWebhook(
-        body: LeadWebhookBody,
-        action: LeadWebhookAction,
-    ): Promise<void> {
-        const entries = this.extractWebhookEntries(body, action);
-
+    public async handleWebhook(entries: LeadWebhookEntry[]): Promise<void> {
         for (const entry of entries) {
             try {
                 await this.processWebhookEntry(entry);
@@ -262,45 +250,5 @@ export class LeadService {
         const numericValue = Number(value);
 
         return Number.isFinite(numericValue) ? numericValue : null;
-    }
-
-    private extractWebhookEntries(
-        body: LeadWebhookBody,
-        action: LeadWebhookAction,
-    ): LeadWebhookEntry[] {
-        const leads = body.leads;
-
-        if (!isRecord(leads)) {
-            return [];
-        }
-
-        const entries = leads[action];
-        const rawEntries = isRecord(entries) ? Object.values(entries) : [];
-
-        return rawEntries
-            .map((entry) => this.normalizeEntry(entry))
-            .filter((entry): entry is LeadWebhookEntry => entry !== null);
-    }
-
-    private normalizeEntry(entry: unknown): LeadWebhookEntry | null {
-        if (!isRecord(entry)) {
-            return null;
-        }
-
-        if (entry.type !== undefined && entry.type !== 'lead') {
-            return null;
-        }
-
-        if (
-            !isStringOrNumber(entry.id) ||
-            !isStringOrNumber(entry.account_id)
-        ) {
-            return null;
-        }
-
-        return {
-            leadId: String(entry.id),
-            accountId: String(entry.account_id),
-        };
     }
 }
