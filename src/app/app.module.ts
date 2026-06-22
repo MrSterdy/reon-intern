@@ -2,8 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { AppConfigModule } from '../config/config.module';
 import { createTypeOrmOptions } from '../config/typeorm.config';
 import { AccountModule } from '../modules/account/account.module';
@@ -24,7 +22,5 @@ import { LeadModule } from '../modules/lead/lead.module';
         ContactModule,
         LeadModule,
     ],
-    controllers: [AppController],
-    providers: [AppService],
 })
 export class AppModule {}
