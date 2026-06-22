@@ -9,11 +9,19 @@ import {
     AmoCustomFieldEntityType,
     AmoCustomFieldPayload,
     AmoCustomFieldResponse,
+    AmoLeadResponse,
+    AmoLeadUpdatePayload,
+    AmoTaskPayload,
+    AmoTaskResponse,
+    AmoTaskUpdatePayload,
     AmoTokenResponse,
     AmoWebhookPayload,
     AmoWebhookResponse,
     RawAmoContactResponse,
     RawAmoCustomFieldListResponse,
+    RawAmoLeadResponse,
+    RawAmoTaskListResponse,
+    RawAmoTaskResponse,
     RawAmoTokenResponse,
     RequestJsonStatus,
     RequestJsonStatusAction,
@@ -252,6 +260,142 @@ export class AmoApiService {
         );
     }
 
+    public async getLead(
+        referer: string,
+        accessToken: string,
+        leadId: string,
+    ): Promise<AmoLeadResponse | null> {
+        const body = await this.requestJson<RawAmoLeadResponse | null>(
+            `${this.buildAccountBaseUrl(referer)}/api/v4/leads/${leadId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                params: {
+                    with: 'contacts',
+                },
+            },
+            this.createErrorStatusActions<RawAmoLeadResponse | null>(
+                'amoCRM lead response is invalid',
+                new Map([[204, { response: null }]]),
+            ),
+        );
+
+        if (body === null) {
+            return null;
+        }
+
+        return this.mapLeadResponse(body);
+    }
+
+    public async updateLeadPrice(
+        referer: string,
+        accessToken: string,
+        leadId: string,
+        price: number,
+    ): Promise<void> {
+        const payload: AmoLeadUpdatePayload = { price };
+
+        await this.requestJson<unknown>(
+            `${this.buildAccountBaseUrl(referer)}/api/v4/leads/${leadId}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                data: payload,
+            },
+            this.createErrorStatusActions(
+                'amoCRM lead update response is invalid',
+            ),
+        );
+    }
+
+    public async getLeadTasks(
+        referer: string,
+        accessToken: string,
+        leadId: string,
+        taskTypeId: number,
+    ): Promise<AmoTaskResponse[]> {
+        const tasks: AmoTaskResponse[] = [];
+        let page = 1;
+        let pageCount = 1;
+
+        do {
+            const body = await this.requestJson<RawAmoTaskListResponse>(
+                `${this.buildAccountBaseUrl(referer)}/api/v4/tasks`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                    params: {
+                        page,
+                        limit: 250,
+                        'filter[entity_type]': 'leads',
+                        'filter[entity_id]': leadId,
+                        'filter[is_completed]': 0,
+                        'filter[task_type]': taskTypeId,
+                    },
+                },
+                this.createErrorStatusActions(
+                    'amoCRM tasks response is invalid',
+                ),
+            );
+
+            tasks.push(...this.mapTasksResponse(body));
+
+            pageCount =
+                typeof body._page_count === 'number' ? body._page_count : page;
+            page += 1;
+        } while (page <= pageCount);
+
+        return tasks;
+    }
+
+    public async createTask(
+        referer: string,
+        accessToken: string,
+        payload: AmoTaskPayload,
+    ): Promise<void> {
+        await this.requestJson<RawAmoTaskListResponse>(
+            `${this.buildAccountBaseUrl(referer)}/api/v4/tasks`,
+            {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                data: [payload],
+            },
+            this.createErrorStatusActions(
+                'amoCRM task creation response is invalid',
+            ),
+        );
+    }
+
+    public async updateTask(
+        referer: string,
+        accessToken: string,
+        taskId: string,
+        payload: AmoTaskUpdatePayload,
+    ): Promise<void> {
+        await this.requestJson<RawAmoTaskResponse>(
+            `${this.buildAccountBaseUrl(referer)}/api/v4/tasks/${taskId}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                data: payload,
+            },
+            this.createErrorStatusActions(
+                'amoCRM task update response is invalid',
+            ),
+        );
+    }
+
     private buildAccountBaseUrl(referer: string): string {
         const normalizedReferer = referer.startsWith('http')
             ? referer
@@ -283,6 +427,35 @@ export class AmoApiService {
             name: body.name,
             customFields: body.custom_fields_values ?? [],
         };
+    }
+
+    private mapLeadResponse(body: RawAmoLeadResponse): AmoLeadResponse {
+        return {
+            id: body.id,
+            price: typeof body.price === 'number' ? body.price : 0,
+            customFields: body.custom_fields_values ?? [],
+            contacts:
+                body._embedded?.contacts?.map((contact) => ({
+                    id: contact.id,
+                    isMain: contact.is_main === true,
+                })) ?? [],
+        };
+    }
+
+    private mapTasksResponse(body: RawAmoTaskListResponse): AmoTaskResponse[] {
+        const tasks = body._embedded?.tasks ?? [];
+
+        return tasks.map((task) => ({
+            id: task.id,
+            entityId: task.entity_id ?? 0,
+            entityType: task.entity_type ?? '',
+            isCompleted: task.is_completed === true,
+            taskTypeId:
+                typeof task.task_type_id === 'number' ? task.task_type_id : 0,
+            text: task.text ?? '',
+            completeTill:
+                typeof task.complete_till === 'number' ? task.complete_till : 0,
+        }));
     }
 
     private async requestJson<TResponse>(
