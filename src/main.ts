@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app/app.module';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { Env } from './shared/enums/env.enum';
 
 async function bootstrap(): Promise<void> {
     const app = await NestFactory.create(AppModule);
@@ -21,7 +22,7 @@ async function bootstrap(): Promise<void> {
         defaultVersion: '1',
     });
 
-    await app.listen(configService.getOrThrow<number>('app.port'));
+    await app.listen(configService.getOrThrow<number>(Env.AppPort));
 }
 
 void bootstrap();

@@ -1,17 +1,18 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { join } from 'node:path';
+import { Env } from '../shared/enums/env.enum';
 
 export function createTypeOrmOptions(
     configService: ConfigService,
 ): TypeOrmModuleOptions {
     return {
         type: 'postgres',
-        host: configService.getOrThrow<string>('database.host'),
-        port: configService.getOrThrow<number>('database.port'),
-        username: configService.getOrThrow<string>('database.username'),
-        password: configService.getOrThrow<string>('database.password'),
-        database: configService.getOrThrow<string>('database.database'),
+        host: configService.getOrThrow<string>(Env.PostgresHost),
+        port: configService.getOrThrow<number>(Env.PostgresPort),
+        username: configService.getOrThrow<string>(Env.PostgresUsername),
+        password: configService.getOrThrow<string>(Env.PostgresPassword),
+        database: configService.getOrThrow<string>(Env.PostgresDatabase),
         autoLoadEntities: true,
         synchronize: false,
         migrations: [

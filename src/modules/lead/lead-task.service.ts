@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { AccountEntity } from '../account/account.entity';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
 import { AmoTaskResponse } from '../api/amo-api/amo-api.types';
+import { Env } from '../../shared/enums/env.enum';
 import {
     CHECK_SERVICE_PRICE_TASK_TEXT_PREFIX,
     LEAD_TASK_DEADLINE_SECONDS,
@@ -34,7 +35,7 @@ export class LeadTaskService {
     ): Promise<void> {
         const text = `${MISSING_SERVICE_FIELDS_TASK_TEXT_PREFIX}${missingServiceNames.join(', ')}`;
         const taskTypeId = this.configService.getOrThrow<number>(
-            'amo.tasks.errorTaskTypeId',
+            Env.AmoErrorTaskTypeId,
         );
 
         await this.upsertTask({
@@ -51,7 +52,7 @@ export class LeadTaskService {
         leadId: string,
     ): Promise<void> {
         const taskTypeId = this.configService.getOrThrow<number>(
-            'amo.tasks.errorTaskTypeId',
+            Env.AmoErrorTaskTypeId,
         );
 
         await this.upsertTask({
@@ -70,7 +71,7 @@ export class LeadTaskService {
         age: number,
     ): Promise<void> {
         const taskTypeId = this.configService.getOrThrow<number>(
-            'amo.tasks.checkTaskTypeId',
+            Env.AmoCheckTaskTypeId,
         );
         const text = `${CHECK_SERVICE_PRICE_TASK_TEXT_PREFIX}${contactName}, возраст: ${age}`;
 

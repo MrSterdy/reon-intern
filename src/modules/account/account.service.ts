@@ -4,6 +4,7 @@ import { AmoApiService } from '../api/amo-api/amo-api.service';
 import { isValidAmoUninstallHookSignature } from '../amo/amo.helpers';
 import { CustomFieldService } from '../custom-field/custom-field.service';
 import { WebhookService } from '../webhook/webhook.service';
+import { Env } from '../../shared/enums/env.enum';
 import { AccountEntity } from './account.entity';
 import { AccountRepository } from './account.repository';
 import { AmoOauthInstallQueryDto } from './dto/amo-oauth-install-query.dto';
@@ -95,9 +96,10 @@ export class AccountService {
     private assertValidUninstallSignature(
         query: AmoOauthUninstallQueryDto,
     ): void {
-        const clientId = this.configService.getOrThrow<string>('amo.clientId');
-        const clientSecret =
-            this.configService.getOrThrow<string>('amo.clientSecret');
+        const clientId = this.configService.getOrThrow<string>(Env.AmoClientId);
+        const clientSecret = this.configService.getOrThrow<string>(
+            Env.AmoClientSecret,
+        );
 
         if (query.clientUuid !== clientId) {
             throw new UnauthorizedException('Invalid amoCRM hook client');

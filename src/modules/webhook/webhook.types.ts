@@ -1,10 +1,11 @@
 import { AmoWebhookEvent } from '../api/amo-api/amo-api.types';
+import { Env } from '../../shared/enums/env.enum';
 
 export type WebhookConfigKey =
-    | 'amo.webhooks.contactCreatedUrl'
-    | 'amo.webhooks.contactUpdatedUrl'
-    | 'amo.webhooks.leadCreatedUrl'
-    | 'amo.webhooks.leadUpdatedUrl';
+    | Env.AmoWebhookContactCreatedUrl
+    | Env.AmoWebhookContactUpdatedUrl
+    | Env.AmoWebhookLeadCreatedUrl
+    | Env.AmoWebhookLeadUpdatedUrl;
 
 export type RequiredWebhookSubscription = {
     configKey: WebhookConfigKey;

@@ -3,11 +3,14 @@ import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
 import { join } from 'node:path';
 import { Env } from './shared/enums/env.enum';
-import { validateDatabaseConfig } from './config/config.schema';
+import {
+    configurationValidationSchema,
+    validateSchema,
+} from './config/config.schema';
 
 config();
 
-const env = validateDatabaseConfig(process.env);
+const env = validateSchema(configurationValidationSchema, process.env);
 
 export default new DataSource({
     type: 'postgres',

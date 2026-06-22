@@ -1,20 +1,21 @@
+import { Env } from '../../shared/enums/env.enum';
 import { RequiredWebhookSubscription } from './webhook.types';
 
 export const REQUIRED_WEBHOOK_SUBSCRIPTIONS: RequiredWebhookSubscription[] = [
     {
-        configKey: 'amo.webhooks.contactCreatedUrl',
+        configKey: Env.AmoWebhookContactCreatedUrl,
         event: 'add_contact',
     },
     {
-        configKey: 'amo.webhooks.contactUpdatedUrl',
+        configKey: Env.AmoWebhookContactUpdatedUrl,
         event: 'update_contact',
     },
     {
-        configKey: 'amo.webhooks.leadCreatedUrl',
+        configKey: Env.AmoWebhookLeadCreatedUrl,
         event: 'add_lead',
     },
     {
-        configKey: 'amo.webhooks.leadUpdatedUrl',
+        configKey: Env.AmoWebhookLeadUpdatedUrl,
         event: 'update_lead',
     },
 ];

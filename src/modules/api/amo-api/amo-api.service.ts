@@ -27,6 +27,7 @@ import {
     RequestJsonStatusAction,
     RequestJsonStatusActions,
 } from './amo-api.types';
+import { Env } from '../../../shared/enums/env.enum';
 
 @Injectable()
 export class AmoApiService {
@@ -49,18 +50,18 @@ export class AmoApiService {
                     'Content-Type': 'application/json',
                 },
                 data: {
-                    client_id:
-                        this.configService.getOrThrow<string>('amo.clientId'),
-                    client_secret:
-                        this.configService.getOrThrow<string>(
-                            'amo.clientSecret',
-                        ),
+                    client_id: this.configService.getOrThrow<string>(
+                        Env.AmoClientId,
+                    ),
+                    client_secret: this.configService.getOrThrow<string>(
+                        Env.AmoClientSecret,
+                    ),
                     grant_type: 'authorization_code',
                     code,
                     redirect_uri:
                         redirectUri ??
                         this.configService.getOrThrow<string>(
-                            'amo.redirectUri',
+                            Env.AmoRedirectUri,
                         ),
                 },
             },
@@ -86,18 +87,17 @@ export class AmoApiService {
                     'Content-Type': 'application/json',
                 },
                 data: {
-                    client_id:
-                        this.configService.getOrThrow<string>('amo.clientId'),
-                    client_secret:
-                        this.configService.getOrThrow<string>(
-                            'amo.clientSecret',
-                        ),
+                    client_id: this.configService.getOrThrow<string>(
+                        Env.AmoClientId,
+                    ),
+                    client_secret: this.configService.getOrThrow<string>(
+                        Env.AmoClientSecret,
+                    ),
                     grant_type: 'refresh_token',
                     refresh_token: refreshToken,
-                    redirect_uri:
-                        this.configService.getOrThrow<string>(
-                            'amo.redirectUri',
-                        ),
+                    redirect_uri: this.configService.getOrThrow<string>(
+                        Env.AmoRedirectUri,
+                    ),
                 },
             },
             this.createErrorStatusActions(
