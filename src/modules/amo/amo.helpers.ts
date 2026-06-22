@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { isEqualSignature } from '../../shared/helpers/signature.helper';
+import { isEqualSignature } from '../../shared/helpers/crypto.helpers';
 import { AmoUninstallHookSignaturePayload } from './amo.types';
 
 const AMO_UNINSTALL_SIGNATURE_ALGORITHM = 'sha256';

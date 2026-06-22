@@ -3,23 +3,22 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { AxiosRequestConfig, AxiosResponse } from 'axios';
 import {
-    isAmoAccountResponse,
-    isAmoWebhookResponse,
-    isRawAmoCustomFieldListResponse,
-    isRawAmoTokenResponse,
-} from './amo-api.guards';
-import {
     AmoAccountResponse,
+    AmoContactResponse,
+    AmoContactUpdatePayload,
     AmoCustomFieldEntityType,
     AmoCustomFieldPayload,
     AmoCustomFieldResponse,
     AmoTokenResponse,
     AmoWebhookPayload,
     AmoWebhookResponse,
+    RawAmoContactResponse,
     RawAmoCustomFieldListResponse,
     RawAmoTokenResponse,
+    RequestJsonStatus,
+    RequestJsonStatusAction,
+    RequestJsonStatusActions,
 } from './amo-api.types';
-import { ResponseGuard } from '../api.types';
 
 @Injectable()
 export class AmoApiService {
@@ -57,8 +56,7 @@ export class AmoApiService {
                         ),
                 },
             },
-            isRawAmoTokenResponse,
-            'amoCRM token response is invalid',
+            this.createErrorStatusActions('amoCRM token response is invalid'),
         );
 
         return {
@@ -94,8 +92,9 @@ export class AmoApiService {
                         ),
                 },
             },
-            isRawAmoTokenResponse,
-            'amoCRM token refresh response is invalid',
+            this.createErrorStatusActions(
+                'amoCRM token refresh response is invalid',
+            ),
         );
 
         return {
@@ -116,8 +115,7 @@ export class AmoApiService {
                     Authorization: `Bearer ${accessToken}`,
                 },
             },
-            isAmoAccountResponse,
-            'amoCRM account response is invalid',
+            this.createErrorStatusActions('amoCRM account response is invalid'),
         );
 
         return {
@@ -147,8 +145,9 @@ export class AmoApiService {
                         limit: 250,
                     },
                 },
-                isRawAmoCustomFieldListResponse,
-                'amoCRM custom fields response is invalid',
+                this.createErrorStatusActions(
+                    'amoCRM custom fields response is invalid',
+                ),
             );
 
             customFields.push(...this.mapCustomFieldsResponse(body));
@@ -177,8 +176,9 @@ export class AmoApiService {
                 },
                 data: fields,
             },
-            isRawAmoCustomFieldListResponse,
-            'amoCRM custom fields creation response is invalid',
+            this.createErrorStatusActions(
+                'amoCRM custom fields creation response is invalid',
+            ),
         );
 
         return this.mapCustomFieldsResponse(body);
@@ -199,15 +199,63 @@ export class AmoApiService {
                 },
                 data: payload,
             },
-            isAmoWebhookResponse,
-            'amoCRM webhook subscription response is invalid',
+            this.createErrorStatusActions(
+                'amoCRM webhook subscription response is invalid',
+            ),
+        );
+    }
+
+    public async getContact(
+        referer: string,
+        accessToken: string,
+        contactId: string,
+    ): Promise<AmoContactResponse | null> {
+        const body = await this.requestJson<RawAmoContactResponse | null>(
+            `${this.buildAccountBaseUrl(referer)}/api/v4/contacts/${contactId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            },
+            this.createErrorStatusActions<RawAmoContactResponse | null>(
+                'amoCRM contact response is invalid',
+                new Map([[204, { response: null }]]),
+            ),
+        );
+
+        if (body === null) {
+            return null;
+        }
+
+        return this.mapContactResponse(body);
+    }
+
+    public async updateContact(
+        referer: string,
+        accessToken: string,
+        contactId: string,
+        payload: AmoContactUpdatePayload,
+    ): Promise<void> {
+        await this.requestJson<unknown>(
+            `${this.buildAccountBaseUrl(referer)}/api/v4/contacts/${contactId}`,
+            {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                data: payload,
+            },
+            this.createErrorStatusActions(
+                'amoCRM contact update response is invalid',
+            ),
         );
     }
 
     private buildAccountBaseUrl(referer: string): string {
         const normalizedReferer = referer.startsWith('http')
             ? referer
-            : referer.includes('.')
+            : referer.includes('.amocrm.ru')
               ? `https://${referer}`
               : `https://${referer}.amocrm.ru`;
         const url = new URL(normalizedReferer);
@@ -227,36 +275,111 @@ export class AmoApiService {
         }));
     }
 
+    private mapContactResponse(
+        body: RawAmoContactResponse,
+    ): AmoContactResponse {
+        return {
+            id: body.id,
+            name: body.name,
+            customFields: body.custom_fields_values ?? [],
+        };
+    }
+
     private async requestJson<TResponse>(
         url: string,
         config: AxiosRequestConfig,
-        isValidResponse: ResponseGuard<TResponse>,
-        invalidResponseMessage: string,
-    ): Promise<TResponse> {
-        let response: AxiosResponse<unknown>;
-
-        try {
-            response = await this.httpService.axiosRef.request<unknown>({
-                ...config,
-                url,
-                validateStatus: () => true,
-            });
-        } catch {
-            throw new BadGatewayException('amoCRM API request failed');
-        }
+        statusActions: RequestJsonStatusActions<TResponse>,
+    ): Promise<TResponse>;
+    private async requestJson<TResponse>(
+        url: string,
+        config: AxiosRequestConfig,
+        statusActions: RequestJsonStatusActions<TResponse | null>,
+    ): Promise<TResponse | null> {
+        const response = await this.request({
+            ...config,
+            url,
+            validateStatus: () => true,
+        });
 
         const body = response.data;
+        const statusAction = statusActions.get(response.status);
 
-        if (
-            response.status < 200 ||
-            response.status >= 300 ||
-            !isValidResponse(body)
-        ) {
+        if (statusAction?.response !== undefined) {
+            return statusAction.response;
+        }
+
+        if (response.status < 200 || response.status >= 300) {
+            const errorMessage =
+                statusAction?.errorMessage ??
+                statusActions.get('default')?.errorMessage ??
+                'amoCRM response is invalid';
+
             throw new BadGatewayException(
-                `${invalidResponseMessage}: HTTP ${response.status}`,
+                this.buildInvalidResponseMessage(errorMessage, response),
             );
         }
 
-        return body;
+        return body as TResponse;
+    }
+
+    private createErrorStatusActions<TResponse>(
+        errorMessage: string,
+        statusActions: ReadonlyMap<
+            number,
+            RequestJsonStatusAction<TResponse>
+        > = new Map(),
+    ): RequestJsonStatusActions<TResponse> {
+        const actions = new Map<
+            RequestJsonStatus,
+            RequestJsonStatusAction<TResponse>
+        >(statusActions);
+
+        actions.set('default', { errorMessage });
+
+        return actions;
+    }
+
+    private async request(
+        config: AxiosRequestConfig,
+    ): Promise<AxiosResponse<unknown>> {
+        try {
+            return await this.httpService.axiosRef.request<unknown>(config);
+        } catch {
+            throw new BadGatewayException(
+                `amoCRM API request failed: ${this.formatRequest(config)}`,
+            );
+        }
+    }
+
+    private buildInvalidResponseMessage(
+        invalidResponseMessage: string,
+        response: AxiosResponse<unknown>,
+    ): string {
+        return `${invalidResponseMessage}: ${this.formatRequest(response.config)} HTTP ${response.status}${this.formatResponseBody(response.data)}`;
+    }
+
+    private formatRequest(config: AxiosRequestConfig): string {
+        const method = config.method?.toUpperCase() ?? 'GET';
+        const url = config.url ?? 'unknown URL';
+
+        return `${method} ${url}`;
+    }
+
+    private formatResponseBody(body: unknown): string {
+        if (body === undefined) {
+            return '';
+        }
+
+        try {
+            const serializedBody = JSON.stringify(body);
+
+            if (serializedBody === undefined) {
+                return '';
+            }
+
+            return ` body=${serializedBody.slice(0, 500)}`;
+        } catch {
+            return '';
+        }
     }
 }

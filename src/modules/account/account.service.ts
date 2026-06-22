@@ -48,6 +48,12 @@ export class AccountService {
         return account;
     }
 
+    public async findInstalledByAccountId(
+        accountId: string,
+    ): Promise<AccountEntity | null> {
+        return await this.accountRepository.findInstalledByAccountId(accountId);
+    }
+
     public async handleUninstall(
         query: AmoOauthUninstallQueryDto,
     ): Promise<void> {

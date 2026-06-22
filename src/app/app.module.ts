@@ -8,6 +8,7 @@ import { AppConfigModule } from '../config/config.module';
 import { createTypeOrmOptions } from '../config/typeorm.config';
 import { AccountModule } from '../modules/account/account.module';
 import { AmoModule } from '../modules/amo/amo.module';
+import { ContactModule } from '../modules/contact/contact.module';
 
 @Module({
     imports: [
@@ -19,6 +20,7 @@ import { AmoModule } from '../modules/amo/amo.module';
         }),
         AccountModule,
         AmoModule,
+        ContactModule,
     ],
     controllers: [AppController],
     providers: [AppService],

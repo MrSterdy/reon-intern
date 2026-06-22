@@ -1,3 +1,15 @@
+export type RequestJsonStatus = number | 'default';
+
+export type RequestJsonStatusAction<TResponse> = {
+    errorMessage?: string;
+    response?: TResponse | null;
+};
+
+export type RequestJsonStatusActions<TResponse> = ReadonlyMap<
+    RequestJsonStatus,
+    RequestJsonStatusAction<TResponse>
+>;
+
 export type AmoTokenResponse = {
     accessToken: string;
     refreshToken: string;
@@ -65,4 +77,40 @@ export type AmoWebhookResponse = {
     destination: string;
     disabled: boolean;
     settings: string[];
+};
+
+export type RawAmoCustomFieldValue = {
+    value?: number | string | null;
+    enum_id?: number | string;
+    enum?: number | string;
+};
+
+export type RawAmoEntityCustomField = {
+    field_id: number | string;
+    field_name?: string;
+    field_type?: string;
+    values?: RawAmoCustomFieldValue[];
+};
+
+export type AmoContactResponse = {
+    id: number | string;
+    name: string;
+    customFields: RawAmoEntityCustomField[];
+};
+
+export type RawAmoContactResponse = {
+    id: number | string;
+    name: string;
+    custom_fields_values?: RawAmoEntityCustomField[] | null;
+};
+
+export type AmoContactCustomFieldPayload = {
+    field_id: number;
+    values: Array<{
+        value: number | string;
+    }>;
+};
+
+export type AmoContactUpdatePayload = {
+    custom_fields_values: AmoContactCustomFieldPayload[];
 };
