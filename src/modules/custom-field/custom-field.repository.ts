@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { CustomFieldEntity } from './custom-field.entity';
-import { SaveCustomFieldPayload } from './custom-field.types';
+import {
+    AmoCustomFieldEntityType,
+    SaveCustomFieldPayload,
+} from './custom-field.types';
 
 @Injectable()
 export class CustomFieldRepository {
@@ -26,8 +29,9 @@ export class CustomFieldRepository {
         });
     }
 
-    public async findContactFieldsByNames(
+    public async findFieldsByNames(
         accountId: string,
+        entityType: AmoCustomFieldEntityType,
         fieldNames: string[],
     ): Promise<CustomFieldEntity[]> {
         if (fieldNames.length === 0) {
@@ -37,7 +41,7 @@ export class CustomFieldRepository {
         return this.repository.find({
             where: {
                 accountId,
-                entityType: 'contacts',
+                entityType,
                 fieldName: In(fieldNames),
             },
         });
