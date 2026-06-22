@@ -9,6 +9,7 @@ import { AccountEntity } from './account.entity';
 import { AccountRepository } from './account.repository';
 import { AmoOauthInstallQueryDto } from './dto/amo-oauth-install-query.dto';
 import { AmoOauthUninstallQueryDto } from './dto/amo-oauth-uninstall-query.dto';
+import { ACCOUNT_TOKEN_REFRESH_BATCH_SIZE } from './account.consts';
 
 @Injectable()
 export class AccountService {
@@ -43,8 +44,10 @@ export class AccountService {
             refreshToken: tokenResponse.refreshToken,
         });
 
-        await this.customFieldService.syncForAccount(account);
-        await this.webhookService.syncForAccount(account);
+        await Promise.all([
+            this.customFieldService.syncForAccount(account),
+            this.webhookService.syncForAccount(account),
+        ]);
 
         return account;
     }
@@ -67,29 +70,43 @@ export class AccountService {
         const accounts =
             await this.accountRepository.findInstalledAccountsWithTokens();
 
-        for (const account of accounts) {
-            if (account.refreshToken === null) {
-                continue;
-            }
+        for (
+            let index = 0;
+            index < accounts.length;
+            index += ACCOUNT_TOKEN_REFRESH_BATCH_SIZE
+        ) {
+            const batch = accounts.slice(
+                index,
+                index + ACCOUNT_TOKEN_REFRESH_BATCH_SIZE,
+            );
 
-            try {
-                const tokenResponse =
-                    await this.amoApiService.refreshAccessToken(
-                        account.subdomain,
-                        account.refreshToken,
-                    );
+            await Promise.all(
+                batch.map((account) =>
+                    this.refreshInstalledAccountToken(account),
+                ),
+            );
+        }
+    }
 
-                await this.accountRepository.updateTokens({
-                    accountId: account.accountId,
-                    accessToken: tokenResponse.accessToken,
-                    refreshToken: tokenResponse.refreshToken,
-                });
-            } catch (error) {
-                this.logger.error(
-                    `Failed to refresh tokens for amoCRM account ${account.accountId}`,
-                    error instanceof Error ? error.stack : undefined,
-                );
-            }
+    private async refreshInstalledAccountToken(
+        account: AccountEntity,
+    ): Promise<void> {
+        try {
+            const tokenResponse = await this.amoApiService.refreshAccessToken(
+                account.subdomain,
+                account.refreshToken!,
+            );
+
+            await this.accountRepository.updateTokens({
+                accountId: account.accountId,
+                accessToken: tokenResponse.accessToken,
+                refreshToken: tokenResponse.refreshToken,
+            });
+        } catch (error) {
+            this.logger.error(
+                `Failed to refresh tokens for amoCRM account ${account.accountId}`,
+                error instanceof Error ? error.stack : undefined,
+            );
         }
     }
 
