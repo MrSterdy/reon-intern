@@ -27,7 +27,9 @@ import {
     RequestJsonStatusAction,
     RequestJsonStatusActions,
 } from './amo-api.types';
+import { ENDPOINTS } from '../../../shared/constants/endpoints';
 import { Env } from '../../../shared/enums/env.enum';
+import { buildEndpointUrl } from '../../../shared/helpers/url.helpers';
 
 @Injectable()
 export class AmoApiService {
@@ -58,11 +60,7 @@ export class AmoApiService {
                     ),
                     grant_type: 'authorization_code',
                     code,
-                    redirect_uri:
-                        redirectUri ??
-                        this.configService.getOrThrow<string>(
-                            Env.AmoRedirectUri,
-                        ),
+                    redirect_uri: redirectUri ?? this.buildRedirectUri(),
                 },
             },
             this.createErrorStatusActions('amoCRM token response is invalid'),
@@ -95,9 +93,7 @@ export class AmoApiService {
                     ),
                     grant_type: 'refresh_token',
                     refresh_token: refreshToken,
-                    redirect_uri: this.configService.getOrThrow<string>(
-                        Env.AmoRedirectUri,
-                    ),
+                    redirect_uri: this.buildRedirectUri(),
                 },
             },
             this.createErrorStatusActions(
@@ -405,6 +401,14 @@ export class AmoApiService {
         const url = new URL(normalizedReferer);
 
         return url.origin;
+    }
+
+    private buildRedirectUri(): string {
+        return buildEndpointUrl(
+            this.configService.getOrThrow<string>(Env.AmoIntegrationBaseUrl),
+            ENDPOINTS.amo.oauth.base,
+            ENDPOINTS.amo.oauth.install,
+        );
     }
 
     private mapCustomFieldsResponse(

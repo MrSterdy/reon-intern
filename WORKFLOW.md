@@ -14,13 +14,7 @@
 | `ENCRYPTION_KEY`                  | `string` | Ключ шифрования чувствительных колонок. Минимум 32 символа. |
 | `AMO_CLIENT_ID`                   | `string` | ID OAuth-интеграции amoCRM.                                 |
 | `AMO_CLIENT_SECRET`               | `string` | Секретный ключ OAuth-интеграции amoCRM.                     |
-| `AMO_REDIRECT_URI`                | `string` | Redirect URI OAuth-интеграции amoCRM.                       |
 | `AMO_INTEGRATION_BASE_URL`        | `string` | Базовый URL интеграции amoCRM.                              |
-| `AMO_UNINSTALL_WEBHOOK_URL`       | `string` | URL хука отключения интеграции amoCRM.                      |
-| `AMO_WEBHOOK_CONTACT_CREATED_URL` | `string` | URL вебхука amoCRM для события создания контакта.           |
-| `AMO_WEBHOOK_CONTACT_UPDATED_URL` | `string` | URL вебхука amoCRM для события изменения контакта.          |
-| `AMO_WEBHOOK_LEAD_CREATED_URL`    | `string` | URL вебхука amoCRM для события создания сделки.             |
-| `AMO_WEBHOOK_LEAD_UPDATED_URL`    | `string` | URL вебхука amoCRM для события изменения сделки.            |
 | `AMO_ERROR_TASK_TYPE_ID`          | `number` | ID типа задачи amoCRM для ошибок проверки сделки.           |
 | `AMO_CHECK_TASK_TYPE_ID`          | `number` | ID типа задачи amoCRM для проверки стоимости услуг.         |
 

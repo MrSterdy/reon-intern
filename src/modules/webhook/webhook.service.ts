@@ -2,6 +2,8 @@ import { BadGatewayException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AccountEntity } from '../account/account.entity';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
+import { Env } from '../../shared/enums/env.enum';
+import { buildEndpointUrl } from '../../shared/helpers/url.helpers';
 import { REQUIRED_WEBHOOK_SUBSCRIPTIONS } from './webhook.consts';
 
 @Injectable()
@@ -23,8 +25,11 @@ export class WebhookService {
                 account.subdomain,
                 account.accessToken,
                 {
-                    destination: this.configService.getOrThrow<string>(
-                        subscription.configKey,
+                    destination: buildEndpointUrl(
+                        this.configService.getOrThrow<string>(
+                            Env.AmoIntegrationBaseUrl,
+                        ),
+                        ...subscription.endpointSegments,
                     ),
                     settings: [subscription.event],
                 },

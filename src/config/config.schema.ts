@@ -15,13 +15,7 @@ export const configurationValidationSchema = Joi.object<ValidatedConfig>({
     [Env.EncryptionKey]: Joi.string().min(32).required(),
     [Env.AmoClientId]: Joi.string().required(),
     [Env.AmoClientSecret]: Joi.string().required(),
-    [Env.AmoRedirectUri]: Joi.string().uri().required(),
     [Env.AmoIntegrationBaseUrl]: Joi.string().uri().required(),
-    [Env.AmoUninstallWebhookUrl]: Joi.string().uri().required(),
-    [Env.AmoWebhookContactCreatedUrl]: Joi.string().uri().required(),
-    [Env.AmoWebhookContactUpdatedUrl]: Joi.string().uri().required(),
-    [Env.AmoWebhookLeadCreatedUrl]: Joi.string().uri().required(),
-    [Env.AmoWebhookLeadUpdatedUrl]: Joi.string().uri().required(),
     [Env.AmoErrorTaskTypeId]: Joi.number().integer().min(0).required(),
     [Env.AmoCheckTaskTypeId]: Joi.number().integer().min(0).required(),
 });

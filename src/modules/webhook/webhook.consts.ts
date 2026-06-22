@@ -1,21 +1,33 @@
-import { Env } from '../../shared/enums/env.enum';
+import { ENDPOINTS } from '../../shared/constants/endpoints';
 import { RequiredWebhookSubscription } from './webhook.types';
 
 export const REQUIRED_WEBHOOK_SUBSCRIPTIONS: RequiredWebhookSubscription[] = [
     {
-        configKey: Env.AmoWebhookContactCreatedUrl,
+        endpointSegments: [
+            ENDPOINTS.amo.webhooks.contacts.base,
+            ENDPOINTS.amo.webhooks.contacts.created,
+        ],
         event: 'add_contact',
     },
     {
-        configKey: Env.AmoWebhookContactUpdatedUrl,
+        endpointSegments: [
+            ENDPOINTS.amo.webhooks.contacts.base,
+            ENDPOINTS.amo.webhooks.contacts.updated,
+        ],
         event: 'update_contact',
     },
     {
-        configKey: Env.AmoWebhookLeadCreatedUrl,
+        endpointSegments: [
+            ENDPOINTS.amo.webhooks.leads.base,
+            ENDPOINTS.amo.webhooks.leads.created,
+        ],
         event: 'add_lead',
     },
     {
-        configKey: Env.AmoWebhookLeadUpdatedUrl,
+        endpointSegments: [
+            ENDPOINTS.amo.webhooks.leads.base,
+            ENDPOINTS.amo.webhooks.leads.updated,
+        ],
         event: 'update_lead',
     },
 ];
