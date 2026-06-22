@@ -29,3 +29,5 @@ export type SyncedAmoCustomField = {
 };
 
 export type ContactAmoFieldIdsByName = Map<string, number>;
+
+export type AmoFieldIdsByName = Map<string, number>;

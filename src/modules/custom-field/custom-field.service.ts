@@ -9,6 +9,7 @@ import {
 import { CustomFieldRepository } from './custom-field.repository';
 import {
     AmoCustomFieldEntityType,
+    AmoFieldIdsByName,
     ContactAmoFieldIdsByName,
     RequiredCustomField,
     SaveCustomFieldPayload,
@@ -48,11 +49,26 @@ export class CustomFieldService {
         accountId: string,
         fieldNames: string[],
     ): Promise<ContactAmoFieldIdsByName> {
-        const customFields =
-            await this.customFieldRepository.findContactFieldsByNames(
-                accountId,
-                fieldNames,
-            );
+        return this.getAmoFieldIdsByNames(accountId, 'contacts', fieldNames);
+    }
+
+    public async getLeadAmoFieldIdsByNames(
+        accountId: string,
+        fieldNames: string[],
+    ): Promise<AmoFieldIdsByName> {
+        return this.getAmoFieldIdsByNames(accountId, 'leads', fieldNames);
+    }
+
+    private async getAmoFieldIdsByNames(
+        accountId: string,
+        entityType: AmoCustomFieldEntityType,
+        fieldNames: string[],
+    ): Promise<AmoFieldIdsByName> {
+        const customFields = await this.customFieldRepository.findFieldsByNames(
+            accountId,
+            entityType,
+            fieldNames,
+        );
 
         return new Map(
             customFields.flatMap((customField) => {

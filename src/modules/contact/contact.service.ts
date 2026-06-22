@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AccountService } from '../account/account.service';
+import { AccountEntity } from '../account/account.entity';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
 import { AmoContactResponse } from '../api/amo-api/amo-api.types';
 import { CustomFieldName } from '../custom-field/custom-field.consts';
@@ -44,15 +45,12 @@ export class ContactService {
         }
     }
 
-    private async processWebhookEntry(
-        entry: ContactWebhookEntry,
-    ): Promise<void> {
-        const account = await this.accountService.findInstalledByAccountId(
-            entry.accountId,
-        );
-
-        if (account === null || account.accessToken === null) {
-            return;
+    public async ensureAgeForContact(
+        account: AccountEntity,
+        contactId: string,
+    ): Promise<number | null> {
+        if (account.accessToken === null) {
+            return null;
         }
 
         const fieldIds =
@@ -67,38 +65,37 @@ export class ContactService {
             this.logger.warn(
                 `Required contact fields are not synced for account ${account.accountId}`,
             );
-            return;
+            return null;
         }
 
         const contact = await this.amoApiService.getContact(
             account.subdomain,
             account.accessToken,
-            entry.contactId,
+            contactId,
         );
 
         if (contact === null) {
-            return;
+            return null;
         }
 
         const calculatedAge = this.calculateContactAge(
             contact,
             birthDateFieldId,
         );
-
-        if (calculatedAge === null) {
-            return;
-        }
-
         const currentAge = this.extractNumericFieldValue(contact, ageFieldId);
 
+        if (calculatedAge === null) {
+            return currentAge;
+        }
+
         if (currentAge === calculatedAge) {
-            return;
+            return currentAge;
         }
 
         await this.amoApiService.updateContact(
             account.subdomain,
             account.accessToken,
-            entry.contactId,
+            contactId,
             {
                 custom_fields_values: [
                     {
@@ -108,6 +105,22 @@ export class ContactService {
                 ],
             },
         );
+
+        return calculatedAge;
+    }
+
+    private async processWebhookEntry(
+        entry: ContactWebhookEntry,
+    ): Promise<void> {
+        const account = await this.accountService.findInstalledByAccountId(
+            entry.accountId,
+        );
+
+        if (account === null || account.accessToken === null) {
+            return;
+        }
+
+        await this.ensureAgeForContact(account, entry.contactId);
     }
 
     private calculateContactAge(

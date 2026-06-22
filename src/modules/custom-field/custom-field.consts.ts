@@ -13,7 +13,7 @@ export const CustomFieldName = {
     Services: 'Услуги',
 } as const;
 
-const SERVICE_FIELD_ENUM_NAMES = [
+export const SERVICE_CUSTOM_FIELD_NAMES = [
     CustomFieldName.FaceLaserRejuvenation,
     CustomFieldName.UltrasoundLifting,
     CustomFieldName.VascularLaserRemoval,
@@ -61,7 +61,7 @@ export const REQUIRED_CUSTOM_FIELDS: RequiredCustomField[] = [
         entityType: 'leads',
         fieldName: CustomFieldName.Services,
         fieldType: 'multiselect',
-        enums: SERVICE_FIELD_ENUM_NAMES.map((fieldName, index) => ({
+        enums: SERVICE_CUSTOM_FIELD_NAMES.map((fieldName, index) => ({
             value: fieldName,
             sort: index + 1,
         })),

@@ -114,3 +114,77 @@ export type AmoContactCustomFieldPayload = {
 export type AmoContactUpdatePayload = {
     custom_fields_values: AmoContactCustomFieldPayload[];
 };
+
+export type RawAmoLeadEmbeddedContact = {
+    id: number | string;
+    is_main?: boolean;
+};
+
+export type RawAmoLeadResponse = {
+    id: number | string;
+    price?: number | null;
+    custom_fields_values?: RawAmoEntityCustomField[] | null;
+    _embedded?: {
+        contacts?: RawAmoLeadEmbeddedContact[];
+    };
+};
+
+export type AmoLeadContactResponse = {
+    id: number | string;
+    isMain: boolean;
+};
+
+export type AmoLeadResponse = {
+    id: number | string;
+    price: number;
+    customFields: RawAmoEntityCustomField[];
+    contacts: AmoLeadContactResponse[];
+};
+
+export type AmoLeadUpdatePayload = {
+    price: number;
+};
+
+export type AmoTaskEntityType = 'leads';
+
+export type RawAmoTaskResponse = {
+    id: number | string;
+    entity_id?: number | string;
+    entity_type?: string;
+    is_completed?: boolean;
+    task_type_id?: number;
+    text?: string;
+    complete_till?: number;
+};
+
+export type RawAmoTaskListResponse = {
+    _page?: number;
+    _page_count?: number;
+    _embedded?: {
+        tasks?: RawAmoTaskResponse[];
+    };
+};
+
+export type AmoTaskResponse = {
+    id: number | string;
+    entityId: number | string;
+    entityType: string;
+    isCompleted: boolean;
+    taskTypeId: number;
+    text: string;
+    completeTill: number;
+};
+
+export type AmoTaskPayload = {
+    entity_id: number;
+    entity_type: AmoTaskEntityType;
+    task_type_id: number;
+    text: string;
+    complete_till: number;
+};
+
+export type AmoTaskUpdatePayload = {
+    task_type_id?: number;
+    text?: string;
+    complete_till?: number;
+};
