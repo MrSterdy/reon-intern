@@ -9,6 +9,7 @@ import {
 import { CustomFieldRepository } from './custom-field.repository';
 import {
     AmoCustomFieldEntityType,
+    ContactAmoFieldIdsByName,
     RequiredCustomField,
     SaveCustomFieldPayload,
     SyncedAmoCustomField,
@@ -41,6 +42,29 @@ export class CustomFieldService {
         }
 
         await this.customFieldRepository.saveCustomFields(payloads);
+    }
+
+    public async getContactAmoFieldIdsByNames(
+        accountId: string,
+        fieldNames: string[],
+    ): Promise<ContactAmoFieldIdsByName> {
+        const customFields =
+            await this.customFieldRepository.findContactFieldsByNames(
+                accountId,
+                fieldNames,
+            );
+
+        return new Map(
+            customFields.flatMap((customField) => {
+                const amoFieldId = Number(customField.fieldId);
+
+                if (!Number.isInteger(amoFieldId) || amoFieldId <= 0) {
+                    return [];
+                }
+
+                return [[customField.fieldName, amoFieldId]];
+            }),
+        );
     }
 
     private async syncEntityFields(

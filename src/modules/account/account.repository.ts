@@ -20,6 +20,14 @@ export class AccountRepository {
         return this.repository.findOne({ where: { accountId } });
     }
 
+    public async findInstalledByAccountId(
+        accountId: string,
+    ): Promise<AccountEntity | null> {
+        return this.repository.findOne({
+            where: { accountId, isInstalled: true },
+        });
+    }
+
     public async findInstalledAccountsWithTokens(): Promise<AccountEntity[]> {
         return this.repository.find({
             where: {

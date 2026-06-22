@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CustomFieldEntity } from './custom-field.entity';
 import { SaveCustomFieldPayload } from './custom-field.types';
 
@@ -8,7 +8,7 @@ import { SaveCustomFieldPayload } from './custom-field.types';
 export class CustomFieldRepository {
     public constructor(
         @InjectRepository(CustomFieldEntity)
-        private readonly dataSource: DataSource,
+        private readonly repository: Repository<CustomFieldEntity>,
     ) {}
 
     public async saveCustomFields(
@@ -18,11 +18,28 @@ export class CustomFieldRepository {
             return;
         }
 
-        await this.dataSource.transaction(async (manager) => {
+        await this.repository.manager.transaction(async (manager) => {
             await manager.upsert(CustomFieldEntity, payloads, {
                 conflictPaths: ['accountId', 'entityType', 'fieldName'],
                 skipUpdateIfNoValuesChanged: true,
             });
+        });
+    }
+
+    public async findContactFieldsByNames(
+        accountId: string,
+        fieldNames: string[],
+    ): Promise<CustomFieldEntity[]> {
+        if (fieldNames.length === 0) {
+            return [];
+        }
+
+        return this.repository.find({
+            where: {
+                accountId,
+                entityType: 'contacts',
+                fieldName: In(fieldNames),
+            },
         });
     }
 }
