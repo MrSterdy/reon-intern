@@ -9,6 +9,7 @@ import { createTypeOrmOptions } from '../config/typeorm.config';
 import { AccountModule } from '../modules/account/account.module';
 import { AmoModule } from '../modules/amo/amo.module';
 import { ContactModule } from '../modules/contact/contact.module';
+import { LeadModule } from '../modules/lead/lead.module';
 
 @Module({
     imports: [
@@ -21,6 +22,7 @@ import { ContactModule } from '../modules/contact/contact.module';
         AccountModule,
         AmoModule,
         ContactModule,
+        LeadModule,
     ],
     controllers: [AppController],
     providers: [AppService],
