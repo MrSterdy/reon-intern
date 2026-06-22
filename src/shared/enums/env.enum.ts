@@ -16,4 +16,6 @@ export enum Env {
     AmoWebhookContactUpdatedUrl = 'AMO_WEBHOOK_CONTACT_UPDATED_URL',
     AmoWebhookLeadCreatedUrl = 'AMO_WEBHOOK_LEAD_CREATED_URL',
     AmoWebhookLeadUpdatedUrl = 'AMO_WEBHOOK_LEAD_UPDATED_URL',
+    AmoErrorTaskTypeId = 'AMO_ERROR_TASK_TYPE_ID',
+    AmoCheckTaskTypeId = 'AMO_CHECK_TASK_TYPE_ID',
 }

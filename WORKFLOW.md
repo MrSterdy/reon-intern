@@ -21,6 +21,8 @@
 | `AMO_WEBHOOK_CONTACT_UPDATED_URL` | `string` | URL вебхука amoCRM для события изменения контакта.          |
 | `AMO_WEBHOOK_LEAD_CREATED_URL`    | `string` | URL вебхука amoCRM для события создания сделки.             |
 | `AMO_WEBHOOK_LEAD_UPDATED_URL`    | `string` | URL вебхука amoCRM для события изменения сделки.            |
+| `AMO_ERROR_TASK_TYPE_ID`          | `number` | ID типа задачи amoCRM для ошибок проверки сделки.           |
+| `AMO_CHECK_TASK_TYPE_ID`          | `number` | ID типа задачи amoCRM для проверки стоимости услуг.         |
 
 ## База данных
 

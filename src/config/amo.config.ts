@@ -13,4 +13,8 @@ export const amoConfig = registerAs('amo', () => ({
         leadCreatedUrl: process.env[Env.AmoWebhookLeadCreatedUrl],
         leadUpdatedUrl: process.env[Env.AmoWebhookLeadUpdatedUrl],
     },
+    tasks: {
+        errorTaskTypeId: Number(process.env[Env.AmoErrorTaskTypeId]),
+        checkTaskTypeId: Number(process.env[Env.AmoCheckTaskTypeId]),
+    },
 }));
