@@ -1,13 +1,14 @@
-export type RequestJsonStatus = number | 'default';
+import type * as Joi from 'joi';
 
 export type RequestJsonStatusAction<TResponse> = {
     errorMessage?: string;
     response?: TResponse | null;
 };
 
-export type RequestJsonStatusActions<TResponse> = ReadonlyMap<
-    RequestJsonStatus,
-    RequestJsonStatusAction<TResponse>
+export type RequestJsonStatusActions<TResponse> = Readonly<
+    Partial<Record<number, RequestJsonStatusAction<TResponse>>> & {
+        default: RequestJsonStatusAction<TResponse>;
+    }
 >;
 
 export type AmoTokenResponse = {
@@ -59,6 +60,11 @@ export type AmoCustomFieldResponse = {
     id: number | string;
     name: string;
     type: string;
+};
+
+export type AmoCustomFieldListResponse = {
+    pageCount?: number;
+    customFields: AmoCustomFieldResponse[];
 };
 
 export type AmoWebhookEvent =
@@ -175,6 +181,11 @@ export type AmoTaskResponse = {
     completeTill: number;
 };
 
+export type AmoTaskListResponse = {
+    pageCount?: number;
+    tasks: AmoTaskResponse[];
+};
+
 export type AmoTaskPayload = {
     entity_id: number;
     entity_type: AmoTaskEntityType;
@@ -187,4 +198,18 @@ export type AmoTaskUpdatePayload = {
     task_type_id?: number;
     text?: string;
     complete_till?: number;
+};
+
+export type AmoApiResponseValidator<TResponse> = (
+    body: unknown,
+    invalidResponseMessage: string,
+) => TResponse;
+
+export type AmoResponseMapper<TRawResponse, TResponse> = (
+    body: TRawResponse,
+) => TResponse;
+
+export type AmoResponseValidatorConfig<TRawResponse, TResponse> = {
+    schema: Joi.ObjectSchema<TRawResponse>;
+    map?: AmoResponseMapper<TRawResponse, TResponse>;
 };
