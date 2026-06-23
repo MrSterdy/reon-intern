@@ -7,7 +7,7 @@ import { validateJoiSchema } from '../../shared/helpers/joi.helpers';
 import {
     amoOauthInstallQuerySchema,
     amoOauthUninstallQuerySchema,
-} from './amo-oauth-query.schemas';
+} from './amo-oauth.schemas';
 
 export function validateAmoOauthInstallQuery(
     query: Record<string, unknown>,

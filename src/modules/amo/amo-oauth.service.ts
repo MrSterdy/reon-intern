@@ -3,7 +3,7 @@ import { AccountService } from '../account/account.service';
 import {
     validateAmoOauthInstallQuery,
     validateAmoOauthUninstallQuery,
-} from './amo-oauth-query.validator';
+} from './amo-oauth.validator';
 
 @Injectable()
 export class AmoOauthService {
