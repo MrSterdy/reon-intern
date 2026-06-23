@@ -1,3 +1,6 @@
+export const ENDPOINT_API_PREFIX = 'api';
+export const DEFAULT_ENDPOINT_API_VERSION = '1';
+
 export const ENDPOINTS = {
     amo: {
         oauth: {
