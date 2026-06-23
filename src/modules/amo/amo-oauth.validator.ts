@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import {
     AmoOauthInstallCommand,
     AmoOauthUninstallCommand,
@@ -8,6 +8,8 @@ import {
     amoOauthInstallQuerySchema,
     amoOauthUninstallQuerySchema,
 } from './amo-oauth.schemas';
+
+const logger = new Logger('AmoOauthValidator');
 
 export function validateAmoOauthInstallQuery(
     query: Record<string, unknown>,
@@ -27,7 +29,11 @@ export function validateAmoOauthInstallQuery(
             platform: value.platform,
             redirectUri: value.redirectUri,
         };
-    } catch {
+    } catch (error: unknown) {
+        logger.error(
+            'Invalid amoCRM install query contract',
+            error instanceof Error ? error.stack : undefined,
+        );
         throw new BadRequestException('Invalid amoCRM install query');
     }
 }
@@ -47,7 +53,11 @@ export function validateAmoOauthUninstallQuery(
             clientUuid: value.client_uuid,
             signature: value.signature,
         };
-    } catch {
+    } catch (error: unknown) {
+        logger.error(
+            'Invalid amoCRM uninstall query contract',
+            error instanceof Error ? error.stack : undefined,
+        );
         throw new BadRequestException('Invalid amoCRM uninstall query');
     }
 }

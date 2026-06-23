@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import * as Joi from 'joi';
 import { validateJoiSchema } from '../../shared/helpers/joi.helpers';
 import {
@@ -6,6 +7,8 @@ import {
     ContactWebhookEntry,
 } from './contact.types';
 import { contactWebhookEntryMapSchema } from './contact-webhook.schemas';
+
+const logger = new Logger('ContactWebhookValidator');
 
 export function validateContactWebhookBody(
     body: Record<string, unknown>,
@@ -26,8 +29,11 @@ export function validateContactWebhookBody(
             abortEarly: false,
             convert: false,
         });
-    } catch {
-        // TODO: log
+    } catch (error: unknown) {
+        logger.error(
+            'Invalid amoCRM contact webhook contract',
+            error instanceof Error ? error.stack : undefined,
+        );
     }
 
     if (validatedBody === null) {
