@@ -1,7 +1,8 @@
-import { BadGatewayException, Injectable } from '@nestjs/common';
+import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { AxiosRequestConfig, AxiosResponse } from 'axios';
+import type * as Joi from 'joi';
 import {
     AmoAccountResponse,
     AmoContactResponse,
@@ -27,12 +28,25 @@ import {
     RequestJsonStatusAction,
     RequestJsonStatusActions,
 } from './amo-api.types';
+import {
+    amoAccountResponseSchema,
+    amoContactResponseSchema,
+    amoCustomFieldListResponseSchema,
+    amoLeadResponseSchema,
+    amoTaskListResponseSchema,
+    amoTaskResponseSchema,
+    amoTokenResponseSchema,
+    amoWebhookResponseSchema,
+} from './amo-api.schemas';
+import { validateAmoApiResponse } from './amo-api.validator';
 import { ENDPOINTS } from '../../../shared/constants/endpoints';
 import { Env } from '../../../shared/enums/env.enum';
 import { buildEndpointUrl } from '../../../shared/helpers/url.helpers';
 
 @Injectable()
 export class AmoApiService {
+    private readonly logger = new Logger(AmoApiService.name);
+
     public constructor(
         private readonly configService: ConfigService,
         private readonly httpService: HttpService,
@@ -64,6 +78,7 @@ export class AmoApiService {
                 },
             },
             this.createErrorStatusActions('amoCRM token response is invalid'),
+            amoTokenResponseSchema,
         );
 
         return {
@@ -99,6 +114,7 @@ export class AmoApiService {
             this.createErrorStatusActions(
                 'amoCRM token refresh response is invalid',
             ),
+            amoTokenResponseSchema,
         );
 
         return {
@@ -120,6 +136,7 @@ export class AmoApiService {
                 },
             },
             this.createErrorStatusActions('amoCRM account response is invalid'),
+            amoAccountResponseSchema,
         );
 
         return {
@@ -152,6 +169,7 @@ export class AmoApiService {
                 this.createErrorStatusActions(
                     'amoCRM custom fields response is invalid',
                 ),
+                amoCustomFieldListResponseSchema,
             );
 
             customFields.push(...this.mapCustomFieldsResponse(body));
@@ -183,9 +201,15 @@ export class AmoApiService {
             this.createErrorStatusActions(
                 'amoCRM custom fields creation response is invalid',
             ),
+            amoCustomFieldListResponseSchema,
+        );
+        const customFields = this.mapCustomFieldsResponse(body);
+
+        this.logger.log(
+            `Created ${customFields.length} amoCRM ${entityType} custom fields for account ${referer}`,
         );
 
-        return this.mapCustomFieldsResponse(body);
+        return customFields;
     }
 
     public async subscribeWebhook(
@@ -193,7 +217,7 @@ export class AmoApiService {
         accessToken: string,
         payload: AmoWebhookPayload,
     ): Promise<AmoWebhookResponse> {
-        return this.requestJson<AmoWebhookResponse>(
+        const webhook = await this.requestJson<AmoWebhookResponse>(
             `${this.buildAccountBaseUrl(referer)}/api/v4/webhooks`,
             {
                 method: 'POST',
@@ -206,7 +230,14 @@ export class AmoApiService {
             this.createErrorStatusActions(
                 'amoCRM webhook subscription response is invalid',
             ),
+            amoWebhookResponseSchema,
         );
+
+        this.logger.log(
+            `Subscribed amoCRM webhook ${webhook.id} for account ${referer}: ${payload.settings.join(', ')}`,
+        );
+
+        return webhook;
     }
 
     public async getContact(
@@ -225,6 +256,7 @@ export class AmoApiService {
                 'amoCRM contact response is invalid',
                 new Map([[204, { response: null }]]),
             ),
+            amoContactResponseSchema,
         );
 
         if (body === null) {
@@ -240,7 +272,7 @@ export class AmoApiService {
         contactId: string,
         payload: AmoContactUpdatePayload,
     ): Promise<void> {
-        await this.requestJson<unknown>(
+        await this.requestJson<RawAmoContactResponse>(
             `${this.buildAccountBaseUrl(referer)}/api/v4/contacts/${contactId}`,
             {
                 method: 'PATCH',
@@ -253,6 +285,11 @@ export class AmoApiService {
             this.createErrorStatusActions(
                 'amoCRM contact update response is invalid',
             ),
+            amoContactResponseSchema,
+        );
+
+        this.logger.log(
+            `Updated amoCRM contact ${contactId} for account ${referer}`,
         );
     }
 
@@ -275,6 +312,7 @@ export class AmoApiService {
                 'amoCRM lead response is invalid',
                 new Map([[204, { response: null }]]),
             ),
+            amoLeadResponseSchema,
         );
 
         if (body === null) {
@@ -292,7 +330,7 @@ export class AmoApiService {
     ): Promise<void> {
         const payload: AmoLeadUpdatePayload = { price };
 
-        await this.requestJson<unknown>(
+        await this.requestJson<RawAmoLeadResponse>(
             `${this.buildAccountBaseUrl(referer)}/api/v4/leads/${leadId}`,
             {
                 method: 'PATCH',
@@ -305,6 +343,11 @@ export class AmoApiService {
             this.createErrorStatusActions(
                 'amoCRM lead update response is invalid',
             ),
+            amoLeadResponseSchema,
+        );
+
+        this.logger.log(
+            `Updated amoCRM lead ${leadId} price to ${price} for account ${referer}`,
         );
     }
 
@@ -337,6 +380,7 @@ export class AmoApiService {
                 this.createErrorStatusActions(
                     'amoCRM tasks response is invalid',
                 ),
+                amoTaskListResponseSchema,
             );
 
             tasks.push(...this.mapTasksResponse(body));
@@ -367,6 +411,11 @@ export class AmoApiService {
             this.createErrorStatusActions(
                 'amoCRM task creation response is invalid',
             ),
+            amoTaskListResponseSchema,
+        );
+
+        this.logger.log(
+            `Created amoCRM task for ${payload.entity_type} ${payload.entity_id} in account ${referer}`,
         );
     }
 
@@ -389,7 +438,10 @@ export class AmoApiService {
             this.createErrorStatusActions(
                 'amoCRM task update response is invalid',
             ),
+            amoTaskResponseSchema,
         );
+
+        this.logger.log(`Updated amoCRM task ${taskId} for account ${referer}`);
     }
 
     private buildAccountBaseUrl(referer: string): string {
@@ -466,11 +518,13 @@ export class AmoApiService {
         url: string,
         config: AxiosRequestConfig,
         statusActions: RequestJsonStatusActions<TResponse>,
+        responseSchema: Joi.ObjectSchema<TResponse>,
     ): Promise<TResponse>;
     private async requestJson<TResponse>(
         url: string,
         config: AxiosRequestConfig,
         statusActions: RequestJsonStatusActions<TResponse | null>,
+        responseSchema: Joi.ObjectSchema<TResponse>,
     ): Promise<TResponse | null> {
         const response = await this.request({
             ...config,
@@ -496,7 +550,16 @@ export class AmoApiService {
             );
         }
 
-        return body as TResponse;
+        const invalidResponseMessage =
+            statusActions.get('default')?.errorMessage ??
+            'amoCRM response is invalid';
+
+        return validateAmoApiResponse(
+            responseSchema,
+            body,
+            invalidResponseMessage,
+            this.buildInvalidResponseMessage(invalidResponseMessage, response),
+        );
     }
 
     private createErrorStatusActions<TResponse>(
