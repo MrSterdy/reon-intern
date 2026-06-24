@@ -21,11 +21,9 @@ export class CustomFieldRepository {
             return;
         }
 
-        await this.repository.manager.transaction(async (manager) => {
-            await manager.upsert(CustomFieldEntity, payloads, {
-                conflictPaths: ['accountId', 'entityType', 'fieldName'],
-                skipUpdateIfNoValuesChanged: true,
-            });
+        await this.repository.manager.upsert(CustomFieldEntity, payloads, {
+            conflictPaths: ['accountId', 'entityType', 'fieldName'],
+            skipUpdateIfNoValuesChanged: true,
         });
     }
 

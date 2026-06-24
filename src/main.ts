@@ -2,12 +2,17 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app/app.module';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { Env } from './shared/enums/env.enum';
+import {
+    DEFAULT_ENDPOINT_API_VERSION,
+    ENDPOINT_API_PREFIX,
+} from './shared/constants/endpoints';
 
 async function bootstrap(): Promise<void> {
     const app = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
 
-    app.setGlobalPrefix('api');
+    app.setGlobalPrefix(ENDPOINT_API_PREFIX);
 
     app.useGlobalPipes(
         new ValidationPipe({
@@ -18,10 +23,10 @@ async function bootstrap(): Promise<void> {
 
     app.enableVersioning({
         type: VersioningType.URI,
-        defaultVersion: '1',
+        defaultVersion: DEFAULT_ENDPOINT_API_VERSION,
     });
 
-    await app.listen(configService.getOrThrow<number>('app.port'));
+    await app.listen(configService.getOrThrow<number>(Env.AppPort));
 }
 
 void bootstrap();

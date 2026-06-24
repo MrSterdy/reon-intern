@@ -9,13 +9,7 @@ export enum Env {
     EncryptionKey = 'ENCRYPTION_KEY',
     AmoClientId = 'AMO_CLIENT_ID',
     AmoClientSecret = 'AMO_CLIENT_SECRET',
-    AmoRedirectUri = 'AMO_REDIRECT_URI',
     AmoIntegrationBaseUrl = 'AMO_INTEGRATION_BASE_URL',
-    AmoUninstallWebhookUrl = 'AMO_UNINSTALL_WEBHOOK_URL',
-    AmoWebhookContactCreatedUrl = 'AMO_WEBHOOK_CONTACT_CREATED_URL',
-    AmoWebhookContactUpdatedUrl = 'AMO_WEBHOOK_CONTACT_UPDATED_URL',
-    AmoWebhookLeadCreatedUrl = 'AMO_WEBHOOK_LEAD_CREATED_URL',
-    AmoWebhookLeadUpdatedUrl = 'AMO_WEBHOOK_LEAD_UPDATED_URL',
     AmoErrorTaskTypeId = 'AMO_ERROR_TASK_TYPE_ID',
     AmoCheckTaskTypeId = 'AMO_CHECK_TASK_TYPE_ID',
 }

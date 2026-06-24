@@ -1,12 +1,14 @@
-import { BadGatewayException, Injectable } from '@nestjs/common';
+import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { AxiosRequestConfig, AxiosResponse } from 'axios';
 import {
     AmoAccountResponse,
+    AmoApiResponseValidator,
     AmoContactResponse,
     AmoContactUpdatePayload,
     AmoCustomFieldEntityType,
+    AmoCustomFieldListResponse,
     AmoCustomFieldPayload,
     AmoCustomFieldResponse,
     AmoLeadResponse,
@@ -15,33 +17,44 @@ import {
     AmoTaskResponse,
     AmoTaskUpdatePayload,
     AmoTokenResponse,
+    AmoWebhookListResponse,
     AmoWebhookPayload,
     AmoWebhookResponse,
-    RawAmoContactResponse,
-    RawAmoCustomFieldListResponse,
-    RawAmoLeadResponse,
-    RawAmoTaskListResponse,
-    RawAmoTaskResponse,
-    RawAmoTokenResponse,
-    RequestJsonStatus,
-    RequestJsonStatusAction,
     RequestJsonStatusActions,
 } from './amo-api.types';
+import {
+    validateAmoAccountResponse,
+    validateAmoContactResponse,
+    validateAmoCustomFieldListResponse,
+    validateAmoLeadResponse,
+    validateAmoTaskListResponse,
+    validateAmoTaskResponse,
+    validateAmoTokenResponse,
+    validateAmoWebhookListResponse,
+    validateAmoWebhookResponse,
+} from './amo-api.validator';
+import { ENDPOINTS } from '../../../shared/constants/endpoints';
+import { Env } from '../../../shared/enums/env.enum';
+import { buildEndpointUrl } from '../../../shared/helpers/url.helpers';
+import { AMO_CUSTOM_FIELDS_PAGE_BATCH_SIZE } from './amo-api.consts';
 
 @Injectable()
 export class AmoApiService {
+    private readonly logger = new Logger(AmoApiService.name);
+
     public constructor(
         private readonly configService: ConfigService,
         private readonly httpService: HttpService,
     ) {}
 
-    public async exchangeAuthorizationCode(
+    public exchangeAuthorizationCode(
         referer: string,
         code: string,
         redirectUri?: string,
     ): Promise<AmoTokenResponse> {
         const accountBaseUrl = this.buildAccountBaseUrl(referer);
-        const body = await this.requestJson<RawAmoTokenResponse>(
+
+        return this.requestJson<AmoTokenResponse>(
             `${accountBaseUrl}/oauth2/access_token`,
             {
                 method: 'POST',
@@ -49,36 +62,31 @@ export class AmoApiService {
                     'Content-Type': 'application/json',
                 },
                 data: {
-                    client_id:
-                        this.configService.getOrThrow<string>('amo.clientId'),
-                    client_secret:
-                        this.configService.getOrThrow<string>(
-                            'amo.clientSecret',
-                        ),
+                    client_id: this.configService.getOrThrow<string>(
+                        Env.AmoClientId,
+                    ),
+                    client_secret: this.configService.getOrThrow<string>(
+                        Env.AmoClientSecret,
+                    ),
                     grant_type: 'authorization_code',
                     code,
-                    redirect_uri:
-                        redirectUri ??
-                        this.configService.getOrThrow<string>(
-                            'amo.redirectUri',
-                        ),
+                    redirect_uri: redirectUri ?? this.buildRedirectUri(),
                 },
             },
-            this.createErrorStatusActions('amoCRM token response is invalid'),
+            {
+                default: { errorMessage: 'amoCRM token response is invalid' },
+            },
+            validateAmoTokenResponse,
         );
-
-        return {
-            accessToken: body.access_token,
-            refreshToken: body.refresh_token,
-        };
     }
 
-    public async refreshAccessToken(
+    public refreshAccessToken(
         referer: string,
         refreshToken: string,
     ): Promise<AmoTokenResponse> {
         const accountBaseUrl = this.buildAccountBaseUrl(referer);
-        const body = await this.requestJson<RawAmoTokenResponse>(
+
+        return this.requestJson<AmoTokenResponse>(
             `${accountBaseUrl}/oauth2/access_token`,
             {
                 method: 'POST',
@@ -86,50 +94,44 @@ export class AmoApiService {
                     'Content-Type': 'application/json',
                 },
                 data: {
-                    client_id:
-                        this.configService.getOrThrow<string>('amo.clientId'),
-                    client_secret:
-                        this.configService.getOrThrow<string>(
-                            'amo.clientSecret',
-                        ),
+                    client_id: this.configService.getOrThrow<string>(
+                        Env.AmoClientId,
+                    ),
+                    client_secret: this.configService.getOrThrow<string>(
+                        Env.AmoClientSecret,
+                    ),
                     grant_type: 'refresh_token',
                     refresh_token: refreshToken,
-                    redirect_uri:
-                        this.configService.getOrThrow<string>(
-                            'amo.redirectUri',
-                        ),
+                    redirect_uri: this.buildRedirectUri(),
                 },
             },
-            this.createErrorStatusActions(
-                'amoCRM token refresh response is invalid',
-            ),
+            {
+                default: {
+                    errorMessage: 'amoCRM token refresh response is invalid',
+                },
+            },
+            validateAmoTokenResponse,
         );
-
-        return {
-            accessToken: body.access_token,
-            refreshToken: body.refresh_token,
-        };
     }
 
-    public async getAccount(
+    public getAccount(
         referer: string,
         accessToken: string,
     ): Promise<AmoAccountResponse> {
         const accountBaseUrl = this.buildAccountBaseUrl(referer);
-        const body = await this.requestJson<AmoAccountResponse>(
+
+        return this.requestJson<AmoAccountResponse>(
             `${accountBaseUrl}/api/v4/account`,
             {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
             },
-            this.createErrorStatusActions('amoCRM account response is invalid'),
+            {
+                default: { errorMessage: 'amoCRM account response is invalid' },
+            },
+            validateAmoAccountResponse,
         );
-
-        return {
-            id: body.id,
-            subdomain: body.subdomain,
-        };
     }
 
     public async getCustomFields(
@@ -137,33 +139,45 @@ export class AmoApiService {
         accessToken: string,
         entityType: AmoCustomFieldEntityType,
     ): Promise<AmoCustomFieldResponse[]> {
-        const customFields: AmoCustomFieldResponse[] = [];
-        let page = 1;
-        let pageCount = 1;
+        const accountBaseUrl = this.buildAccountBaseUrl(referer);
+        const firstPage = await this.requestCustomFieldsPage(
+            accountBaseUrl,
+            accessToken,
+            entityType,
+            1,
+        );
+        const customFields = [...firstPage.customFields];
+        const pageCount = firstPage.pageCount ?? 1;
 
-        do {
-            const body = await this.requestJson<RawAmoCustomFieldListResponse>(
-                `${this.buildAccountBaseUrl(referer)}/api/v4/${entityType}/custom_fields`,
+        for (
+            let page = 2;
+            page <= pageCount;
+            page += AMO_CUSTOM_FIELDS_PAGE_BATCH_SIZE
+        ) {
+            const pages = Array.from(
                 {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                    params: {
-                        page,
-                        limit: 250,
-                    },
+                    length: Math.min(
+                        AMO_CUSTOM_FIELDS_PAGE_BATCH_SIZE,
+                        pageCount - page + 1,
+                    ),
                 },
-                this.createErrorStatusActions(
-                    'amoCRM custom fields response is invalid',
+                (_, index) => page + index,
+            );
+            const responses = await Promise.all(
+                pages.map((pageNumber) =>
+                    this.requestCustomFieldsPage(
+                        accountBaseUrl,
+                        accessToken,
+                        entityType,
+                        pageNumber,
+                    ),
                 ),
             );
 
-            customFields.push(...this.mapCustomFieldsResponse(body));
-
-            pageCount =
-                typeof body._page_count === 'number' ? body._page_count : page;
-            page += 1;
-        } while (page <= pageCount);
+            customFields.push(
+                ...responses.flatMap((response) => response.customFields),
+            );
+        }
 
         return customFields;
     }
@@ -174,7 +188,7 @@ export class AmoApiService {
         entityType: AmoCustomFieldEntityType,
         fields: AmoCustomFieldPayload[],
     ): Promise<AmoCustomFieldResponse[]> {
-        const body = await this.requestJson<RawAmoCustomFieldListResponse>(
+        const body = await this.requestJson(
             `${this.buildAccountBaseUrl(referer)}/api/v4/${entityType}/custom_fields`,
             {
                 method: 'POST',
@@ -184,15 +198,19 @@ export class AmoApiService {
                 },
                 data: fields,
             },
-            this.createErrorStatusActions(
-                'amoCRM custom fields creation response is invalid',
-            ),
+            {
+                default: {
+                    errorMessage:
+                        'amoCRM custom fields creation response is invalid',
+                },
+            },
+            validateAmoCustomFieldListResponse,
         );
 
-        return this.mapCustomFieldsResponse(body);
+        return body.customFields;
     }
 
-    public async subscribeWebhook(
+    public subscribeWebhook(
         referer: string,
         accessToken: string,
         payload: AmoWebhookPayload,
@@ -207,35 +225,63 @@ export class AmoApiService {
                 },
                 data: payload,
             },
-            this.createErrorStatusActions(
-                'amoCRM webhook subscription response is invalid',
-            ),
+            {
+                default: {
+                    errorMessage:
+                        'amoCRM webhook subscription response is invalid',
+                },
+            },
+            validateAmoWebhookResponse,
         );
     }
 
-    public async getContact(
+    public async getWebhooks(
+        referer: string,
+        accessToken: string,
+        destination?: string,
+    ): Promise<AmoWebhookResponse[]> {
+        const body = await this.requestJson<AmoWebhookListResponse>(
+            `${this.buildAccountBaseUrl(referer)}/api/v4/webhooks`,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                params:
+                    destination === undefined
+                        ? undefined
+                        : {
+                              'filter[destination]': destination,
+                          },
+            },
+            {
+                default: {
+                    errorMessage: 'amoCRM webhooks response is invalid',
+                },
+            },
+            validateAmoWebhookListResponse,
+        );
+
+        return body.webhooks;
+    }
+
+    public getContact(
         referer: string,
         accessToken: string,
         contactId: string,
     ): Promise<AmoContactResponse | null> {
-        const body = await this.requestJson<RawAmoContactResponse | null>(
+        return this.requestJson(
             `${this.buildAccountBaseUrl(referer)}/api/v4/contacts/${contactId}`,
             {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
             },
-            this.createErrorStatusActions<RawAmoContactResponse | null>(
-                'amoCRM contact response is invalid',
-                new Map([[204, { response: null }]]),
-            ),
+            {
+                204: { response: null },
+                default: { errorMessage: 'amoCRM contact response is invalid' },
+            },
+            validateAmoContactResponse,
         );
-
-        if (body === null) {
-            return null;
-        }
-
-        return this.mapContactResponse(body);
     }
 
     public async updateContact(
@@ -244,7 +290,7 @@ export class AmoApiService {
         contactId: string,
         payload: AmoContactUpdatePayload,
     ): Promise<void> {
-        await this.requestJson<unknown>(
+        await this.requestJson(
             `${this.buildAccountBaseUrl(referer)}/api/v4/contacts/${contactId}`,
             {
                 method: 'PATCH',
@@ -254,18 +300,21 @@ export class AmoApiService {
                 },
                 data: payload,
             },
-            this.createErrorStatusActions(
-                'amoCRM contact update response is invalid',
-            ),
+            {
+                default: {
+                    errorMessage: 'amoCRM contact update response is invalid',
+                },
+            },
+            validateAmoContactResponse,
         );
     }
 
-    public async getLead(
+    public getLead(
         referer: string,
         accessToken: string,
         leadId: string,
     ): Promise<AmoLeadResponse | null> {
-        const body = await this.requestJson<RawAmoLeadResponse | null>(
+        return this.requestJson(
             `${this.buildAccountBaseUrl(referer)}/api/v4/leads/${leadId}`,
             {
                 headers: {
@@ -275,17 +324,12 @@ export class AmoApiService {
                     with: 'contacts',
                 },
             },
-            this.createErrorStatusActions<RawAmoLeadResponse | null>(
-                'amoCRM lead response is invalid',
-                new Map([[204, { response: null }]]),
-            ),
+            {
+                204: { response: null },
+                default: { errorMessage: 'amoCRM lead response is invalid' },
+            },
+            validateAmoLeadResponse,
         );
-
-        if (body === null) {
-            return null;
-        }
-
-        return this.mapLeadResponse(body);
     }
 
     public async updateLeadPrice(
@@ -296,7 +340,7 @@ export class AmoApiService {
     ): Promise<void> {
         const payload: AmoLeadUpdatePayload = { price };
 
-        await this.requestJson<unknown>(
+        await this.requestJson(
             `${this.buildAccountBaseUrl(referer)}/api/v4/leads/${leadId}`,
             {
                 method: 'PATCH',
@@ -306,9 +350,12 @@ export class AmoApiService {
                 },
                 data: payload,
             },
-            this.createErrorStatusActions(
-                'amoCRM lead update response is invalid',
-            ),
+            {
+                default: {
+                    errorMessage: 'amoCRM lead update response is invalid',
+                },
+            },
+            validateAmoLeadResponse,
         );
     }
 
@@ -323,7 +370,7 @@ export class AmoApiService {
         let pageCount = 1;
 
         do {
-            const body = await this.requestJson<RawAmoTaskListResponse>(
+            const body = await this.requestJson(
                 `${this.buildAccountBaseUrl(referer)}/api/v4/tasks`,
                 {
                     headers: {
@@ -338,15 +385,17 @@ export class AmoApiService {
                         'filter[task_type]': taskTypeId,
                     },
                 },
-                this.createErrorStatusActions(
-                    'amoCRM tasks response is invalid',
-                ),
+                {
+                    default: {
+                        errorMessage: 'amoCRM tasks response is invalid',
+                    },
+                },
+                validateAmoTaskListResponse,
             );
 
-            tasks.push(...this.mapTasksResponse(body));
+            tasks.push(...body.tasks);
 
-            pageCount =
-                typeof body._page_count === 'number' ? body._page_count : page;
+            pageCount = body.pageCount ?? page;
             page += 1;
         } while (page <= pageCount);
 
@@ -358,7 +407,7 @@ export class AmoApiService {
         accessToken: string,
         payload: AmoTaskPayload,
     ): Promise<void> {
-        await this.requestJson<RawAmoTaskListResponse>(
+        await this.requestJson(
             `${this.buildAccountBaseUrl(referer)}/api/v4/tasks`,
             {
                 method: 'POST',
@@ -368,9 +417,12 @@ export class AmoApiService {
                 },
                 data: [payload],
             },
-            this.createErrorStatusActions(
-                'amoCRM task creation response is invalid',
-            ),
+            {
+                default: {
+                    errorMessage: 'amoCRM task creation response is invalid',
+                },
+            },
+            validateAmoTaskListResponse,
         );
     }
 
@@ -380,7 +432,7 @@ export class AmoApiService {
         taskId: string,
         payload: AmoTaskUpdatePayload,
     ): Promise<void> {
-        await this.requestJson<RawAmoTaskResponse>(
+        await this.requestJson(
             `${this.buildAccountBaseUrl(referer)}/api/v4/tasks/${taskId}`,
             {
                 method: 'PATCH',
@@ -390,9 +442,12 @@ export class AmoApiService {
                 },
                 data: payload,
             },
-            this.createErrorStatusActions(
-                'amoCRM task update response is invalid',
-            ),
+            {
+                default: {
+                    errorMessage: 'amoCRM task update response is invalid',
+                },
+            },
+            validateAmoTaskResponse,
         );
     }
 
@@ -407,75 +462,70 @@ export class AmoApiService {
         return url.origin;
     }
 
-    private mapCustomFieldsResponse(
-        body: RawAmoCustomFieldListResponse,
-    ): AmoCustomFieldResponse[] {
-        const customFields = body._embedded?.custom_fields ?? [];
-
-        return customFields.map((customField) => ({
-            id: customField.id,
-            name: customField.name,
-            type: customField.type,
-        }));
+    private buildRedirectUri(): string {
+        return buildEndpointUrl(
+            this.configService.getOrThrow<string>(Env.AmoIntegrationBaseUrl),
+            ENDPOINTS.amo.oauth.base,
+            ENDPOINTS.amo.oauth.install,
+        );
     }
 
-    private mapContactResponse(
-        body: RawAmoContactResponse,
-    ): AmoContactResponse {
-        return {
-            id: body.id,
-            name: body.name,
-            customFields: body.custom_fields_values ?? [],
-        };
-    }
-
-    private mapLeadResponse(body: RawAmoLeadResponse): AmoLeadResponse {
-        return {
-            id: body.id,
-            price: typeof body.price === 'number' ? body.price : 0,
-            customFields: body.custom_fields_values ?? [],
-            contacts:
-                body._embedded?.contacts?.map((contact) => ({
-                    id: contact.id,
-                    isMain: contact.is_main === true,
-                })) ?? [],
-        };
-    }
-
-    private mapTasksResponse(body: RawAmoTaskListResponse): AmoTaskResponse[] {
-        const tasks = body._embedded?.tasks ?? [];
-
-        return tasks.map((task) => ({
-            id: task.id,
-            entityId: task.entity_id ?? 0,
-            entityType: task.entity_type ?? '',
-            isCompleted: task.is_completed === true,
-            taskTypeId:
-                typeof task.task_type_id === 'number' ? task.task_type_id : 0,
-            text: task.text ?? '',
-            completeTill:
-                typeof task.complete_till === 'number' ? task.complete_till : 0,
-        }));
+    private requestCustomFieldsPage(
+        accountBaseUrl: string,
+        accessToken: string,
+        entityType: AmoCustomFieldEntityType,
+        page: number,
+    ): Promise<AmoCustomFieldListResponse> {
+        return this.requestJson(
+            `${accountBaseUrl}/api/v4/${entityType}/custom_fields`,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                params: {
+                    page,
+                    limit: 250,
+                },
+            },
+            {
+                default: {
+                    errorMessage: 'amoCRM custom fields response is invalid',
+                },
+            },
+            validateAmoCustomFieldListResponse,
+        );
     }
 
     private async requestJson<TResponse>(
         url: string,
         config: AxiosRequestConfig,
         statusActions: RequestJsonStatusActions<TResponse>,
+        responseValidator: AmoApiResponseValidator<TResponse>,
     ): Promise<TResponse>;
     private async requestJson<TResponse>(
         url: string,
         config: AxiosRequestConfig,
         statusActions: RequestJsonStatusActions<TResponse | null>,
+        responseValidator: AmoApiResponseValidator<TResponse>,
     ): Promise<TResponse | null> {
-        const response = await this.request({
-            ...config,
-            url,
-            validateStatus: () => true,
-        });
+        let response: AxiosResponse<unknown>;
+
+        try {
+            response = await this.httpService.axiosRef.request<unknown>({
+                ...config,
+                url,
+                validateStatus: () => true,
+            });
+        } catch (error: unknown) {
+            this.logger.error(
+                'amoCRM API request failed',
+                error instanceof Error ? error.stack : undefined,
+            );
+            throw new BadGatewayException('amoCRM API request failed');
+        }
 
         const body = response.data;
-        const statusAction = statusActions.get(response.status);
+        const statusAction = statusActions[response.status];
 
         if (statusAction?.response !== undefined) {
             return statusAction.response;
@@ -484,75 +534,16 @@ export class AmoApiService {
         if (response.status < 200 || response.status >= 300) {
             const errorMessage =
                 statusAction?.errorMessage ??
-                statusActions.get('default')?.errorMessage ??
+                statusActions.default.errorMessage ??
                 'amoCRM response is invalid';
 
-            throw new BadGatewayException(
-                this.buildInvalidResponseMessage(errorMessage, response),
+            this.logger.error(
+                `${errorMessage}: HTTP ${response.status} ${url}`,
             );
+
+            throw new BadGatewayException(errorMessage);
         }
 
-        return body as TResponse;
-    }
-
-    private createErrorStatusActions<TResponse>(
-        errorMessage: string,
-        statusActions: ReadonlyMap<
-            number,
-            RequestJsonStatusAction<TResponse>
-        > = new Map(),
-    ): RequestJsonStatusActions<TResponse> {
-        const actions = new Map<
-            RequestJsonStatus,
-            RequestJsonStatusAction<TResponse>
-        >(statusActions);
-
-        actions.set('default', { errorMessage });
-
-        return actions;
-    }
-
-    private async request(
-        config: AxiosRequestConfig,
-    ): Promise<AxiosResponse<unknown>> {
-        try {
-            return await this.httpService.axiosRef.request<unknown>(config);
-        } catch {
-            throw new BadGatewayException(
-                `amoCRM API request failed: ${this.formatRequest(config)}`,
-            );
-        }
-    }
-
-    private buildInvalidResponseMessage(
-        invalidResponseMessage: string,
-        response: AxiosResponse<unknown>,
-    ): string {
-        return `${invalidResponseMessage}: ${this.formatRequest(response.config)} HTTP ${response.status}${this.formatResponseBody(response.data)}`;
-    }
-
-    private formatRequest(config: AxiosRequestConfig): string {
-        const method = config.method?.toUpperCase() ?? 'GET';
-        const url = config.url ?? 'unknown URL';
-
-        return `${method} ${url}`;
-    }
-
-    private formatResponseBody(body: unknown): string {
-        if (body === undefined) {
-            return '';
-        }
-
-        try {
-            const serializedBody = JSON.stringify(body);
-
-            if (serializedBody === undefined) {
-                return '';
-            }
-
-            return ` body=${serializedBody.slice(0, 500)}`;
-        } catch {
-            return '';
-        }
+        return responseValidator(body, 'Invalid amoCRM response');
     }
 }

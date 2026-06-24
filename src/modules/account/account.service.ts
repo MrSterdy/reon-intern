@@ -1,13 +1,17 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
-import { isValidAmoUninstallHookSignature } from '../amo/amo.helpers';
 import { CustomFieldService } from '../custom-field/custom-field.service';
 import { WebhookService } from '../webhook/webhook.service';
+import { Env } from '../../shared/enums/env.enum';
 import { AccountEntity } from './account.entity';
 import { AccountRepository } from './account.repository';
-import { AmoOauthInstallQueryDto } from './dto/amo-oauth-install-query.dto';
-import { AmoOauthUninstallQueryDto } from './dto/amo-oauth-uninstall-query.dto';
+import { ACCOUNT_TOKEN_REFRESH_BATCH_SIZE } from './account.consts';
+import {
+    AmoOauthInstallCommand,
+    AmoOauthUninstallCommand,
+} from './account.types';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 @Injectable()
 export class AccountService {
@@ -22,16 +26,16 @@ export class AccountService {
     ) {}
 
     public async handleInstall(
-        query: AmoOauthInstallQueryDto,
+        command: AmoOauthInstallCommand,
     ): Promise<AccountEntity> {
         const tokenResponse =
             await this.amoApiService.exchangeAuthorizationCode(
-                query.referer,
-                query.code,
-                query.redirectUri,
+                command.referer,
+                command.code,
+                command.redirectUri,
             );
         const amoAccount = await this.amoApiService.getAccount(
-            query.referer,
+            command.referer,
             tokenResponse.accessToken,
         );
 
@@ -42,8 +46,10 @@ export class AccountService {
             refreshToken: tokenResponse.refreshToken,
         });
 
-        await this.customFieldService.syncForAccount(account);
-        await this.webhookService.syncForAccount(account);
+        await Promise.all([
+            this.customFieldService.syncForAccount(account),
+            this.webhookService.syncForAccount(account),
+        ]);
 
         return account;
     }
@@ -55,62 +61,81 @@ export class AccountService {
     }
 
     public async handleUninstall(
-        query: AmoOauthUninstallQueryDto,
+        command: AmoOauthUninstallCommand,
     ): Promise<void> {
-        this.assertValidUninstallSignature(query);
+        this.assertValidUninstallSignature(command);
 
-        await this.accountRepository.markUninstalled(query.accountId);
+        await this.accountRepository.markUninstalled(command.accountId);
     }
 
     public async refreshInstalledAccountTokens(): Promise<void> {
         const accounts =
             await this.accountRepository.findInstalledAccountsWithTokens();
 
-        for (const account of accounts) {
-            if (account.refreshToken === null) {
-                continue;
-            }
+        for (
+            let index = 0;
+            index < accounts.length;
+            index += ACCOUNT_TOKEN_REFRESH_BATCH_SIZE
+        ) {
+            const batch = accounts.slice(
+                index,
+                index + ACCOUNT_TOKEN_REFRESH_BATCH_SIZE,
+            );
 
-            try {
-                const tokenResponse =
-                    await this.amoApiService.refreshAccessToken(
-                        account.subdomain,
-                        account.refreshToken,
-                    );
+            await Promise.all(
+                batch.map((account) =>
+                    this.refreshInstalledAccountToken(account),
+                ),
+            );
+        }
+    }
 
-                await this.accountRepository.updateTokens({
-                    accountId: account.accountId,
-                    accessToken: tokenResponse.accessToken,
-                    refreshToken: tokenResponse.refreshToken,
-                });
-            } catch (error) {
-                this.logger.error(
-                    `Failed to refresh tokens for amoCRM account ${account.accountId}`,
-                    error instanceof Error ? error.stack : undefined,
-                );
-            }
+    private async refreshInstalledAccountToken(
+        account: AccountEntity,
+    ): Promise<void> {
+        try {
+            const tokenResponse = await this.amoApiService.refreshAccessToken(
+                account.subdomain,
+                account.refreshToken!,
+            );
+
+            await this.accountRepository.updateTokens({
+                accountId: account.accountId,
+                accessToken: tokenResponse.accessToken,
+                refreshToken: tokenResponse.refreshToken,
+            });
+        } catch (error) {
+            this.logger.error(
+                `Failed to refresh tokens for amoCRM account ${account.accountId}`,
+                error instanceof Error ? error.stack : undefined,
+            );
         }
     }
 
     private assertValidUninstallSignature(
-        query: AmoOauthUninstallQueryDto,
+        query: AmoOauthUninstallCommand,
     ): void {
-        const clientId = this.configService.getOrThrow<string>('amo.clientId');
-        const clientSecret =
-            this.configService.getOrThrow<string>('amo.clientSecret');
+        const clientId = this.configService.getOrThrow<string>(Env.AmoClientId);
+        const clientSecret = this.configService.getOrThrow<string>(
+            Env.AmoClientSecret,
+        );
 
         if (query.clientUuid !== clientId) {
             throw new UnauthorizedException('Invalid amoCRM hook client');
         }
 
-        if (
-            !isValidAmoUninstallHookSignature({
-                accountId: query.accountId,
-                clientId,
-                clientSecret,
-                signature: query.signature,
-            })
-        ) {
+        const expectedSignature = createHmac('sha256', clientSecret)
+            .update(`${clientId}|${query.accountId}`)
+            .digest('hex');
+
+        const expectedBuffer = Buffer.from(expectedSignature);
+        const receivedBuffer = Buffer.from(query.signature);
+
+        const isEqualSignature =
+            expectedBuffer.length === receivedBuffer.length &&
+            timingSafeEqual(expectedBuffer, receivedBuffer);
+
+        if (!isEqualSignature) {
             throw new UnauthorizedException('Invalid amoCRM hook signature');
         }
     }

@@ -1,6 +1,9 @@
-export type AmoCustomFieldEntityType = 'contacts' | 'leads';
+import type {
+    AmoCustomFieldEntityType,
+    AmoCustomFieldType,
+} from '../api/amo-api/amo-api.types';
 
-export type AmoCustomFieldType = 'date' | 'numeric' | 'multiselect';
+export type { AmoCustomFieldEntityType, AmoCustomFieldType };
 
 export type AmoCustomFieldEnum = {
     value: string;
@@ -26,8 +29,5 @@ export type SyncedAmoCustomField = {
     id: number | string;
     name: string;
     type: string;
+    enums?: AmoCustomFieldEnum[];
 };
-
-export type ContactAmoFieldIdsByName = Map<string, number>;
-
-export type AmoFieldIdsByName = Map<string, number>;

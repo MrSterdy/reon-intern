@@ -1,6 +1,6 @@
-import { CustomFieldName } from '../custom-field/custom-field.consts';
+import { CUSTOM_FIELD_NAMES } from '../custom-field/custom-field.consts';
 
 export const REQUIRED_CONTACT_FIELD_NAMES = [
-    CustomFieldName.BirthDate,
-    CustomFieldName.Age,
+    CUSTOM_FIELD_NAMES.BirthDate,
+    CUSTOM_FIELD_NAMES.Age,
 ] as const;
