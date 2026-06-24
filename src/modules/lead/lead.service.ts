@@ -1,11 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AccountEntity } from '../account/account.entity';
 import { AccountService } from '../account/account.service';
+import { extractNumericFieldValue } from '../api/amo-api/amo-api.helpers';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
 import {
     AmoContactResponse,
-    AmoLeadContactResponse,
     AmoLeadResponse,
+    RawAmoEntityCustomField,
 } from '../api/amo-api/amo-api.types';
 import {
     CUSTOM_FIELD_NAMES,
@@ -13,11 +15,19 @@ import {
 } from '../custom-field/custom-field.consts';
 import { CustomFieldService } from '../custom-field/custom-field.service';
 import { ContactService } from '../contact/contact.service';
-import { extractNumericFieldValue } from '../api/amo-api/amo-api.helpers';
-import { LeadPriceCalculatorService } from './lead-price-calculator.service';
-import { LeadTaskService } from './lead-task.service';
-import { REQUIRED_LEAD_FIELD_NAMES } from './lead.consts';
-import { LeadWebhookEntry } from './lead.types';
+import { Env } from '../../shared/enums/env.enum';
+import {
+    CHECK_SERVICE_PRICE_TASK_TEXT_PREFIX,
+    LEAD_TASK_DEADLINE_SECONDS,
+    MISSING_SERVICE_FIELDS_TASK_TEXT_PREFIX,
+    REQUIRED_LEAD_FIELD_NAMES,
+    UNKNOWN_AGE_TASK_TEXT,
+} from './lead.consts';
+import {
+    LeadPriceCalculationResult,
+    LeadWebhookEntry,
+    UpsertTaskPayload,
+} from './lead.types';
 
 @Injectable()
 export class LeadService {
@@ -26,10 +36,9 @@ export class LeadService {
     public constructor(
         private readonly accountService: AccountService,
         private readonly amoApiService: AmoApiService,
+        private readonly configService: ConfigService,
         private readonly customFieldService: CustomFieldService,
         private readonly contactService: ContactService,
-        private readonly priceCalculator: LeadPriceCalculatorService,
-        private readonly leadTaskService: LeadTaskService,
     ) {}
 
     public async handleWebhook(entries: LeadWebhookEntry[]): Promise<void> {
@@ -95,7 +104,7 @@ export class LeadService {
         servicesFieldId: number,
     ): Promise<void> {
         const selectedServiceNames = this.extractSelectedServiceNames(
-            lead,
+            lead.customFields,
             servicesFieldId,
         );
 
@@ -103,14 +112,16 @@ export class LeadService {
             return;
         }
 
-        const mainContactId = this.extractMainContactId(lead.contacts);
-
-        if (mainContactId === null) {
+        const rawMainContactId =
+            lead.contacts.find((contact) => contact.isMain)?.id ?? null;
+        if (rawMainContactId === null) {
             this.logger.warn(
                 `Main contact is missing for amoCRM lead ${leadId}`,
             );
             return;
         }
+
+        const mainContactId = String(rawMainContactId);
 
         const contact = await this.amoApiService.getContact(
             account.subdomain,
@@ -127,18 +138,26 @@ export class LeadService {
                 account.id,
                 [...selectedServiceNames, CUSTOM_FIELD_NAMES.Age],
             );
-        const calculation = this.priceCalculator.calculate(
+        const calculation = this.calculatePrice(
             contact,
             selectedServiceNames,
             contactFieldIds,
         );
 
         if (calculation.missingServiceNames.length > 0) {
-            await this.leadTaskService.upsertMissingServiceFieldsTask(
+            const text = `${MISSING_SERVICE_FIELDS_TASK_TEXT_PREFIX}${calculation.missingServiceNames.join(', ')}`;
+            const errorTaskTypeId = this.configService.getOrThrow<number>(
+                Env.AmoErrorTaskTypeId,
+            );
+
+            await this.upsertTask({
                 account,
                 leadId,
-                calculation.missingServiceNames,
-            );
+                taskTypeId: errorTaskTypeId,
+                text,
+                textPrefix: MISSING_SERVICE_FIELDS_TASK_TEXT_PREFIX,
+            });
+
             return;
         }
 
@@ -150,7 +169,18 @@ export class LeadService {
         );
 
         if (age === null) {
-            await this.leadTaskService.upsertUnknownAgeTask(account, leadId);
+            const errorTaskTypeId = this.configService.getOrThrow<number>(
+                Env.AmoErrorTaskTypeId,
+            );
+
+            await this.upsertTask({
+                account,
+                leadId,
+                taskTypeId: errorTaskTypeId,
+                text: UNKNOWN_AGE_TASK_TEXT,
+                textPrefix: UNKNOWN_AGE_TASK_TEXT,
+            });
+
             return;
         }
 
@@ -163,12 +193,18 @@ export class LeadService {
             );
         }
 
-        await this.leadTaskService.upsertCheckServicePriceTask(
+        const checkTaskTypeId = this.configService.getOrThrow<number>(
+            Env.AmoCheckTaskTypeId,
+        );
+        const text = `${CHECK_SERVICE_PRICE_TASK_TEXT_PREFIX}${contact.name}, возраст: ${age}`;
+
+        await this.upsertTask({
             account,
             leadId,
-            contact.name,
-            age,
-        );
+            taskTypeId: checkTaskTypeId,
+            text,
+            textPrefix: CHECK_SERVICE_PRICE_TASK_TEXT_PREFIX,
+        });
     }
 
     private async resolveContactAge(
@@ -198,41 +234,111 @@ export class LeadService {
         return this.contactService.ensureAgeForContact(account, contactId);
     }
 
-    private extractSelectedServiceNames(
-        lead: AmoLeadResponse,
-        servicesFieldId: number,
-    ): string[] {
-        const field =
-            lead.customFields.find(
-                (field) => Number(field.field_id) === servicesFieldId,
-            ) ?? null;
-        const values = field?.values ?? [];
-        const serviceNames = values.flatMap((value) => {
-            if (typeof value.value !== 'string') {
-                return [];
+    private calculatePrice(
+        contact: AmoContactResponse,
+        selectedServiceNames: string[],
+        serviceFieldIds: ReadonlyMap<string, number>,
+    ): LeadPriceCalculationResult {
+        let price = 0;
+        const missingServiceNames: string[] = [];
+
+        for (const serviceName of selectedServiceNames) {
+            const serviceFieldId = serviceFieldIds.get(serviceName);
+
+            if (serviceFieldId === undefined) {
+                missingServiceNames.push(serviceName);
+                continue;
             }
 
-            if (!this.isServiceFieldName(value.value)) {
-                return [];
+            const serviceValue = extractNumericFieldValue(
+                contact.customFields,
+                serviceFieldId,
+            );
+
+            if (serviceValue === null) {
+                missingServiceNames.push(serviceName);
+                continue;
             }
 
-            return [value.value];
-        });
+            price += serviceValue;
+        }
 
-        return [...new Set(serviceNames)];
+        return {
+            price,
+            missingServiceNames,
+        };
     }
 
-    private isServiceFieldName(fieldName: string): boolean {
-        return (SERVICE_CUSTOM_FIELD_NAMES as readonly string[]).includes(
-            fieldName,
+    private async upsertTask(payload: UpsertTaskPayload): Promise<void> {
+        const { account, leadId, taskTypeId, text, textPrefix } = payload;
+
+        if (account.accessToken === null) {
+            return;
+        }
+
+        const existingTasks = await this.amoApiService.getLeadTasks(
+            account.subdomain,
+            account.accessToken,
+            leadId,
+            taskTypeId,
+        );
+        const existingTask =
+            existingTasks.find((task) => task.text.startsWith(textPrefix)) ??
+            null;
+
+        const taskCompleteTill =
+            Math.floor(Date.now() / 1000) + LEAD_TASK_DEADLINE_SECONDS;
+
+        if (existingTask === null) {
+            await this.amoApiService.createTask(
+                account.subdomain,
+                account.accessToken,
+                {
+                    entity_id: Number(leadId),
+                    entity_type: 'leads',
+                    task_type_id: taskTypeId,
+                    text,
+                    complete_till: taskCompleteTill,
+                },
+            );
+            return;
+        }
+
+        if (existingTask.text === text) {
+            return;
+        }
+
+        await this.amoApiService.updateTask(
+            account.subdomain,
+            account.accessToken,
+            String(existingTask.id),
+            {
+                task_type_id: taskTypeId,
+                text,
+                complete_till: taskCompleteTill,
+            },
         );
     }
 
-    private extractMainContactId(
-        contacts: AmoLeadContactResponse[],
-    ): string | null {
-        const mainContact = contacts.find((contact) => contact.isMain) ?? null;
+    private extractSelectedServiceNames(
+        customFields: RawAmoEntityCustomField[],
+        servicesFieldId: number,
+    ): string[] {
+        const field =
+            customFields.find(
+                (field) => Number(field.field_id) === servicesFieldId,
+            ) ?? null;
+        const values = field?.values ?? [];
+        const serviceNames = values
+            .map((value) => value.value)
+            .filter(
+                (value): value is string =>
+                    typeof value === 'string' &&
+                    (SERVICE_CUSTOM_FIELD_NAMES as readonly string[]).includes(
+                        value,
+                    ),
+            );
 
-        return mainContact === null ? null : String(mainContact.id);
+        return [...new Set(serviceNames)];
     }
 }

@@ -1,3 +1,5 @@
+import { AccountEntity } from '../account/account.entity';
+
 export type LeadWebhookAction = 'add' | 'update';
 
 export type AmoLeadWebhookEntry = {
@@ -22,4 +24,12 @@ export type LeadWebhookEntry = {
 export type LeadPriceCalculationResult = {
     price: number;
     missingServiceNames: string[];
+};
+
+export type UpsertTaskPayload = {
+    account: AccountEntity;
+    leadId: string;
+    taskTypeId: number;
+    text: string;
+    textPrefix: string;
 };
