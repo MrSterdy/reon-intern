@@ -8,6 +8,7 @@ import {
     AmoContactResponse,
     AmoContactUpdatePayload,
     AmoCustomFieldEntityType,
+    AmoCustomFieldListResponse,
     AmoCustomFieldPayload,
     AmoCustomFieldResponse,
     AmoLeadResponse,
@@ -33,6 +34,7 @@ import {
 import { ENDPOINTS } from '../../../shared/constants/endpoints';
 import { Env } from '../../../shared/enums/env.enum';
 import { buildEndpointUrl } from '../../../shared/helpers/url.helpers';
+import { AMO_CUSTOM_FIELDS_PAGE_BATCH_SIZE } from './amo-api.consts';
 
 @Injectable()
 export class AmoApiService {
@@ -135,36 +137,45 @@ export class AmoApiService {
         accessToken: string,
         entityType: AmoCustomFieldEntityType,
     ): Promise<AmoCustomFieldResponse[]> {
-        const customFields: AmoCustomFieldResponse[] = [];
-        let page = 1;
-        let pageCount = 1;
+        const accountBaseUrl = this.buildAccountBaseUrl(referer);
+        const firstPage = await this.requestCustomFieldsPage(
+            accountBaseUrl,
+            accessToken,
+            entityType,
+            1,
+        );
+        const customFields = [...firstPage.customFields];
+        const pageCount = firstPage.pageCount ?? 1;
 
-        do {
-            const body = await this.requestJson(
-                `${this.buildAccountBaseUrl(referer)}/api/v4/${entityType}/custom_fields`,
+        for (
+            let page = 2;
+            page <= pageCount;
+            page += AMO_CUSTOM_FIELDS_PAGE_BATCH_SIZE
+        ) {
+            const pages = Array.from(
                 {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                    params: {
-                        page,
-                        limit: 250,
-                    },
+                    length: Math.min(
+                        AMO_CUSTOM_FIELDS_PAGE_BATCH_SIZE,
+                        pageCount - page + 1,
+                    ),
                 },
-                {
-                    default: {
-                        errorMessage:
-                            'amoCRM custom fields response is invalid',
-                    },
-                },
-                validateAmoCustomFieldListResponse,
+                (_, index) => page + index,
+            );
+            const responses = await Promise.all(
+                pages.map((pageNumber) =>
+                    this.requestCustomFieldsPage(
+                        accountBaseUrl,
+                        accessToken,
+                        entityType,
+                        pageNumber,
+                    ),
+                ),
             );
 
-            customFields.push(...body.customFields);
-
-            pageCount = body.pageCount ?? page;
-            page += 1;
-        } while (page <= pageCount);
+            customFields.push(
+                ...responses.flatMap((response) => response.customFields),
+            );
+        }
 
         return customFields;
     }
@@ -425,6 +436,32 @@ export class AmoApiService {
             this.configService.getOrThrow<string>(Env.AmoIntegrationBaseUrl),
             ENDPOINTS.amo.oauth.base,
             ENDPOINTS.amo.oauth.install,
+        );
+    }
+
+    private requestCustomFieldsPage(
+        accountBaseUrl: string,
+        accessToken: string,
+        entityType: AmoCustomFieldEntityType,
+        page: number,
+    ): Promise<AmoCustomFieldListResponse> {
+        return this.requestJson(
+            `${accountBaseUrl}/api/v4/${entityType}/custom_fields`,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                params: {
+                    page,
+                    limit: 250,
+                },
+            },
+            {
+                default: {
+                    errorMessage: 'amoCRM custom fields response is invalid',
+                },
+            },
+            validateAmoCustomFieldListResponse,
         );
     }
 

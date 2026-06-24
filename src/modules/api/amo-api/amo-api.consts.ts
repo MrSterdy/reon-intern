@@ -1,0 +1,1 @@
+export const AMO_CUSTOM_FIELDS_PAGE_BATCH_SIZE = 5;
