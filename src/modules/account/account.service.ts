@@ -135,7 +135,7 @@ export class AccountService {
             expectedBuffer.length === receivedBuffer.length &&
             timingSafeEqual(expectedBuffer, receivedBuffer);
 
-        if (isEqualSignature) {
+        if (!isEqualSignature) {
             throw new UnauthorizedException('Invalid amoCRM hook signature');
         }
     }
