@@ -310,34 +310,78 @@ GitHub flow:
 - README содержит инструкцию по запуску и настройке интеграции;
 - приложение не создает дубликаты полей, вебхуков и задач при повторной обработке.
 
-## Project setup
+## Установка зависимостей
 
 ```bash
 npm install
 ```
 
-## Compile and run the project
+## Настройка окружения
 
 ```bash
-# development
+cp .env.example .env
+```
+
+Перед запуском приложения заполните `.env` реальными OAuth-значениями amoCRM и ID типов задач.
+
+При запуске через Docker Compose backend-сервис переопределяет `POSTGRES_HOST` на `postgres`. Для локальных команд с хост-машины оставьте `POSTGRES_HOST=localhost`.
+
+## Docker Compose
+
+```bash
+docker compose -f docker-compose/docker-compose.dev.yml up --build
+```
+
+Команда запускает dev-окружение: NestJS backend через `Dockerfile.dev` и PostgreSQL 18. Данные PostgreSQL хранятся в named volume `postgres-reon-practice-data` и сохраняются между перезапусками контейнеров.
+
+Production-окружение запускается через отдельный compose-файл и `Dockerfile.prod`. Файл с production-переменными передается только в Docker Compose через `--env-file`; не храните реальные секреты в репозитории.
+
+```bash
+docker compose --env-file .env.production -f docker-compose/docker-compose.prod.yml up --build -d
+```
+
+Production-стек использует отдельный named volume `postgres-reon-practice-prod-data`. В production наружу публикуется только backend-порт, PostgreSQL доступен только внутри Docker-сети.
+
+Остановить контейнеры:
+
+```bash
+docker compose -f docker-compose/docker-compose.dev.yml down
+```
+
+Остановить production-контейнеры:
+
+```bash
+docker compose --env-file .env.production -f docker-compose/docker-compose.prod.yml down
+```
+
+Запустить миграции после старта PostgreSQL:
+
+```bash
+npm run migration:run
+```
+
+## Сборка и запуск проекта
+
+```bash
+# development-режим
 npm run start
 
-# watch mode
+# watch-режим
 npm run start:dev
 
-# production mode
+# production-режим
 npm run start:prod
 ```
 
-## Run tests
+## Запуск тестов
 
 ```bash
-# unit tests
+# unit-тесты
 npm run test
 
-# e2e tests
+# e2e-тесты
 npm run test:e2e
 
-# test coverage
+# покрытие тестами
 npm run test:cov
 ```
