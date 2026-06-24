@@ -1,12 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AccountService } from '../account/account.service';
 import { AccountEntity } from '../account/account.entity';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
 import { AmoContactResponse } from '../api/amo-api/amo-api.types';
 import { CustomFieldName } from '../custom-field/custom-field.consts';
 import { CustomFieldService } from '../custom-field/custom-field.service';
 import { calculateAgeFromBirthTimestamp } from './contact.helpers';
-import { ContactWebhookEntry } from './contact.types';
 import { isStringOrNumber } from '../../shared/helpers/object.helpers';
 import { REQUIRED_CONTACT_FIELD_NAMES } from './contact.consts';
 
@@ -15,23 +13,9 @@ export class ContactService {
     private readonly logger = new Logger(ContactService.name);
 
     public constructor(
-        private readonly accountService: AccountService,
         private readonly amoApiService: AmoApiService,
         private readonly customFieldService: CustomFieldService,
     ) {}
-
-    public async handleWebhook(entries: ContactWebhookEntry[]): Promise<void> {
-        for (const entry of entries) {
-            try {
-                await this.processWebhookEntry(entry);
-            } catch (error) {
-                this.logger.error(
-                    `Failed to process amoCRM contact ${entry.contactId} for account ${entry.accountId}`,
-                    error instanceof Error ? error.stack : undefined,
-                );
-            }
-        }
-    }
 
     public async ensureAgeForContact(
         account: AccountEntity,
@@ -66,10 +50,14 @@ export class ContactService {
             return null;
         }
 
-        const calculatedAge = this.calculateContactAge(
+        const birthTimestamp = this.extractNumericFieldValue(
             contact,
             birthDateFieldId,
         );
+        const calculatedAge =
+            birthTimestamp !== null
+                ? calculateAgeFromBirthTimestamp(birthTimestamp)
+                : null;
         const currentAge = this.extractNumericFieldValue(contact, ageFieldId);
 
         if (calculatedAge === null) {
@@ -95,36 +83,6 @@ export class ContactService {
         );
 
         return calculatedAge;
-    }
-
-    private async processWebhookEntry(
-        entry: ContactWebhookEntry,
-    ): Promise<void> {
-        const account = await this.accountService.findInstalledByAccountId(
-            entry.accountId,
-        );
-
-        if (account === null || account.accessToken === null) {
-            return;
-        }
-
-        await this.ensureAgeForContact(account, entry.contactId);
-    }
-
-    private calculateContactAge(
-        contact: AmoContactResponse,
-        birthDateFieldId: number,
-    ): number | null {
-        const birthTimestamp = this.extractNumericFieldValue(
-            contact,
-            birthDateFieldId,
-        );
-
-        if (birthTimestamp === null) {
-            return null;
-        }
-
-        return calculateAgeFromBirthTimestamp(birthTimestamp);
     }
 
     private extractNumericFieldValue(
