@@ -1,6 +1,6 @@
 import { BadGatewayException, Injectable } from '@nestjs/common';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
-import { AmoCustomFieldPayload } from '../api/amo-api/amo-api.types';
+import { AmoCustomFieldEntityType } from '../api/amo-api/amo-api.types';
 import { AccountEntity } from '../account/account.entity';
 import {
     CUSTOM_FIELD_ENTITY_TYPES,
@@ -8,9 +8,7 @@ import {
 } from './custom-field.consts';
 import { CustomFieldRepository } from './custom-field.repository';
 import {
-    AmoCustomFieldEntityType,
-    AmoFieldIdsByName,
-    ContactAmoFieldIdsByName,
+    AmoCustomFieldEnum,
     RequiredCustomField,
     SaveCustomFieldPayload,
     SyncedAmoCustomField,
@@ -48,14 +46,14 @@ export class CustomFieldService {
     public async getContactAmoFieldIdsByNames(
         accountId: string,
         fieldNames: string[],
-    ): Promise<ContactAmoFieldIdsByName> {
+    ): Promise<Map<string, number>> {
         return this.getAmoFieldIdsByNames(accountId, 'contacts', fieldNames);
     }
 
     public async getLeadAmoFieldIdsByNames(
         accountId: string,
         fieldNames: string[],
-    ): Promise<AmoFieldIdsByName> {
+    ): Promise<Map<string, number>> {
         return this.getAmoFieldIdsByNames(accountId, 'leads', fieldNames);
     }
 
@@ -63,7 +61,7 @@ export class CustomFieldService {
         accountId: string,
         entityType: AmoCustomFieldEntityType,
         fieldNames: string[],
-    ): Promise<AmoFieldIdsByName> {
+    ): Promise<Map<string, number>> {
         const customFields = await this.customFieldRepository.findFieldsByNames(
             accountId,
             entityType,
@@ -96,10 +94,17 @@ export class CustomFieldService {
             accessToken,
             entityType,
         );
-        const missingFields = requiredFields.filter(
-            (requiredField) =>
-                this.findMatchedField(existingFields, requiredField) === null,
-        );
+        const missingFields = requiredFields
+            .filter(
+                (requiredField) =>
+                    this.findMatchedField(existingFields, requiredField) ===
+                    null,
+            )
+            .map((field) => ({
+                name: field.fieldName,
+                type: field.fieldType,
+                ...(field.enums === undefined ? {} : { enums: field.enums }),
+            }));
         const createdFields =
             missingFields.length === 0
                 ? []
@@ -107,7 +112,7 @@ export class CustomFieldService {
                       account.subdomain,
                       accessToken,
                       entityType,
-                      this.buildCreateCustomFieldPayloads(missingFields),
+                      missingFields,
                   );
         const syncedFields = [...existingFields, ...createdFields];
         const payloads: SaveCustomFieldPayload[] = [];
@@ -144,18 +149,33 @@ export class CustomFieldService {
             fields.find(
                 (field) =>
                     field.name === requiredField.fieldName &&
-                    field.type === requiredField.fieldType,
+                    field.type === requiredField.fieldType &&
+                    this.hasMatchedEnums(field.enums, requiredField.enums),
             ) ?? null
         );
     }
 
-    private buildCreateCustomFieldPayloads(
-        fields: RequiredCustomField[],
-    ): AmoCustomFieldPayload[] {
-        return fields.map((field) => ({
-            name: field.fieldName,
-            type: field.fieldType,
-            ...(field.enums === undefined ? {} : { enums: field.enums }),
-        }));
+    private hasMatchedEnums(
+        fieldEnums: AmoCustomFieldEnum[] | undefined,
+        requiredEnums: AmoCustomFieldEnum[] | undefined,
+    ): boolean {
+        if (requiredEnums === undefined) {
+            return true;
+        }
+
+        if (
+            fieldEnums === undefined ||
+            fieldEnums.length !== requiredEnums.length
+        ) {
+            return false;
+        }
+
+        const fieldEnumValues = new Set(
+            fieldEnums.map((fieldEnum) => fieldEnum.value),
+        );
+
+        return requiredEnums.every((requiredEnum) =>
+            fieldEnumValues.has(requiredEnum.value),
+        );
     }
 }

@@ -31,11 +31,16 @@ export function mapAmoCustomFieldListResponse(
     return {
         pageCount: body._page_count,
         customFields: customFields.map(
-            (customField): AmoCustomFieldResponse => ({
-                id: customField.id,
-                name: customField.name,
-                type: customField.type,
-            }),
+            (customField): AmoCustomFieldResponse => {
+                return {
+                    id: customField.id,
+                    name: customField.name,
+                    type: customField.type,
+                    ...(customField.enums == null
+                        ? {}
+                        : { enums: customField.enums }),
+                };
+            },
         ),
     };
 }

@@ -3,6 +3,7 @@ import {
     AmoAccountResponse,
     AmoWebhookResponse,
     RawAmoContactResponse,
+    RawAmoCustomFieldResponse,
     RawAmoCustomFieldListResponse,
     RawAmoLeadResponse,
     RawAmoTaskListResponse,
@@ -25,11 +26,16 @@ const entityCustomFieldSchema = Joi.object({
     values: Joi.array().items(customFieldValueSchema).optional(),
 }).unknown(true);
 
-const customFieldSchema = Joi.object({
+const customFieldEnumSchema = Joi.object({
+    value: Joi.string().required(),
+    sort: Joi.number().required(),
+}).unknown(true);
+
+const customFieldSchema = Joi.object<RawAmoCustomFieldResponse>({
     id: amoIdSchema,
     name: Joi.string().required(),
     type: Joi.string().required(),
-    enums: Joi.any().optional(),
+    enums: Joi.array().items(customFieldEnumSchema).allow(null).optional(),
 }).unknown(true);
 
 const taskSchema = Joi.object<RawAmoTaskResponse>({

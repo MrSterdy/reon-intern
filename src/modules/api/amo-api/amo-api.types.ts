@@ -45,7 +45,7 @@ export type RawAmoCustomFieldResponse = {
     id: number | string;
     name: string;
     type: string;
-    enums?: unknown;
+    enums?: AmoCustomFieldEnumPayload[] | null;
 };
 
 export type RawAmoCustomFieldListResponse = {
@@ -60,6 +60,7 @@ export type AmoCustomFieldResponse = {
     id: number | string;
     name: string;
     type: string;
+    enums?: AmoCustomFieldEnumPayload[];
 };
 
 export type AmoCustomFieldListResponse = {
