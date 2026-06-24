@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AccountEntity } from '../account/account.entity';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
 import { AmoContactResponse } from '../api/amo-api/amo-api.types';
-import { CustomFieldName } from '../custom-field/custom-field.consts';
+import { CUSTOM_FIELD_NAMES } from '../custom-field/custom-field.consts';
 import { CustomFieldService } from '../custom-field/custom-field.service';
 import { calculateAgeFromBirthTimestamp } from './contact.helpers';
 import { isStringOrNumber } from '../../shared/helpers/object.helpers';
@@ -30,8 +30,8 @@ export class ContactService {
                 account.id,
                 [...REQUIRED_CONTACT_FIELD_NAMES],
             );
-        const birthDateFieldId = fieldIds.get(CustomFieldName.BirthDate);
-        const ageFieldId = fieldIds.get(CustomFieldName.Age);
+        const birthDateFieldId = fieldIds.get(CUSTOM_FIELD_NAMES.BirthDate);
+        const ageFieldId = fieldIds.get(CUSTOM_FIELD_NAMES.Age);
 
         if (birthDateFieldId === undefined || ageFieldId === undefined) {
             this.logger.warn(

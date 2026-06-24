@@ -1,6 +1,6 @@
-import { CustomFieldName } from '../custom-field/custom-field.consts';
+import { CUSTOM_FIELD_NAMES } from '../custom-field/custom-field.consts';
 
-export const REQUIRED_LEAD_FIELD_NAMES = [CustomFieldName.Services] as const;
+export const REQUIRED_LEAD_FIELD_NAMES = [CUSTOM_FIELD_NAMES.Services] as const;
 
 export const MISSING_SERVICE_FIELDS_TASK_TEXT_PREFIX =
     'У контакта не заполнены поля услуг: ';

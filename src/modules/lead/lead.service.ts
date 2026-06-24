@@ -8,7 +8,7 @@ import {
     AmoLeadResponse,
 } from '../api/amo-api/amo-api.types';
 import {
-    CustomFieldName,
+    CUSTOM_FIELD_NAMES,
     SERVICE_CUSTOM_FIELD_NAMES,
 } from '../custom-field/custom-field.consts';
 import { CustomFieldService } from '../custom-field/custom-field.service';
@@ -59,7 +59,7 @@ export class LeadService {
                 account.id,
                 [...REQUIRED_LEAD_FIELD_NAMES],
             );
-        const servicesFieldId = leadFieldIds.get(CustomFieldName.Services);
+        const servicesFieldId = leadFieldIds.get(CUSTOM_FIELD_NAMES.Services);
 
         if (servicesFieldId === undefined) {
             this.logger.warn(
@@ -125,7 +125,7 @@ export class LeadService {
         const contactFieldIds =
             await this.customFieldService.getContactAmoFieldIdsByNames(
                 account.id,
-                [...selectedServiceNames, CustomFieldName.Age],
+                [...selectedServiceNames, CUSTOM_FIELD_NAMES.Age],
             );
         const calculation = this.priceCalculator.calculate(
             contact,
@@ -177,7 +177,7 @@ export class LeadService {
         contactId: string,
         contactFieldIds: ReadonlyMap<string, number>,
     ): Promise<number | null> {
-        const ageFieldId = contactFieldIds.get(CustomFieldName.Age);
+        const ageFieldId = contactFieldIds.get(CUSTOM_FIELD_NAMES.Age);
 
         if (ageFieldId === undefined) {
             this.logger.warn(
