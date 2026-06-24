@@ -1,11 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AccountEntity } from '../account/account.entity';
+import { extractNumericFieldValue } from '../api/amo-api/amo-api.helpers';
 import { AmoApiService } from '../api/amo-api/amo-api.service';
-import { AmoContactResponse } from '../api/amo-api/amo-api.types';
 import { CUSTOM_FIELD_NAMES } from '../custom-field/custom-field.consts';
 import { CustomFieldService } from '../custom-field/custom-field.service';
 import { calculateAgeFromBirthTimestamp } from './contact.helpers';
-import { isStringOrNumber } from '../../shared/helpers/object.helpers';
 import { REQUIRED_CONTACT_FIELD_NAMES } from './contact.consts';
 
 @Injectable()
@@ -50,15 +49,18 @@ export class ContactService {
             return null;
         }
 
-        const birthTimestamp = this.extractNumericFieldValue(
-            contact,
+        const birthTimestamp = extractNumericFieldValue(
+            contact.customFields,
             birthDateFieldId,
         );
         const calculatedAge =
             birthTimestamp !== null
                 ? calculateAgeFromBirthTimestamp(birthTimestamp)
                 : null;
-        const currentAge = this.extractNumericFieldValue(contact, ageFieldId);
+        const currentAge = extractNumericFieldValue(
+            contact.customFields,
+            ageFieldId,
+        );
 
         if (calculatedAge === null) {
             return currentAge;
@@ -83,24 +85,5 @@ export class ContactService {
         );
 
         return calculatedAge;
-    }
-
-    private extractNumericFieldValue(
-        contact: AmoContactResponse,
-        fieldId: number,
-    ): number | null {
-        const field =
-            contact.customFields.find(
-                (field) => Number(field.field_id) === fieldId,
-            ) ?? null;
-        const value = field?.values?.[0]?.value;
-
-        if (!isStringOrNumber(value)) {
-            return null;
-        }
-
-        const numericValue = Number(value);
-
-        return Number.isFinite(numericValue) ? numericValue : null;
     }
 }

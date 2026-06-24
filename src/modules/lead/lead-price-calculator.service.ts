@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AmoContactResponse } from '../api/amo-api/amo-api.types';
-import { isStringOrNumber } from '../../shared/helpers/object.helpers';
+import { extractNumericFieldValue } from '../api/amo-api/amo-api.helpers';
 import { LeadPriceCalculationResult } from './lead.types';
 
 @Injectable()
@@ -21,8 +21,8 @@ export class LeadPriceCalculatorService {
                 continue;
             }
 
-            const serviceValue = this.extractNumericFieldValue(
-                contact,
+            const serviceValue = extractNumericFieldValue(
+                contact.customFields,
                 serviceFieldId,
             );
 
@@ -38,24 +38,5 @@ export class LeadPriceCalculatorService {
             price,
             missingServiceNames,
         };
-    }
-
-    private extractNumericFieldValue(
-        contact: AmoContactResponse,
-        fieldId: number,
-    ): number | null {
-        const field =
-            contact.customFields.find(
-                (field) => Number(field.field_id) === fieldId,
-            ) ?? null;
-        const value = field?.values?.[0]?.value;
-
-        if (!isStringOrNumber(value)) {
-            return null;
-        }
-
-        const numericValue = Number(value);
-
-        return Number.isFinite(numericValue) ? numericValue : null;
     }
 }

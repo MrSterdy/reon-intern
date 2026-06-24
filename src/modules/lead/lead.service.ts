@@ -13,7 +13,7 @@ import {
 } from '../custom-field/custom-field.consts';
 import { CustomFieldService } from '../custom-field/custom-field.service';
 import { ContactService } from '../contact/contact.service';
-import { isStringOrNumber } from '../../shared/helpers/object.helpers';
+import { extractNumericFieldValue } from '../api/amo-api/amo-api.helpers';
 import { LeadPriceCalculatorService } from './lead-price-calculator.service';
 import { LeadTaskService } from './lead-task.service';
 import { REQUIRED_LEAD_FIELD_NAMES } from './lead.consts';
@@ -186,7 +186,10 @@ export class LeadService {
             return null;
         }
 
-        const currentAge = this.extractNumericFieldValue(contact, ageFieldId);
+        const currentAge = extractNumericFieldValue(
+            contact.customFields,
+            ageFieldId,
+        );
 
         if (currentAge !== null) {
             return currentAge;
@@ -231,24 +234,5 @@ export class LeadService {
         const mainContact = contacts.find((contact) => contact.isMain) ?? null;
 
         return mainContact === null ? null : String(mainContact.id);
-    }
-
-    private extractNumericFieldValue(
-        contact: AmoContactResponse,
-        fieldId: number,
-    ): number | null {
-        const field =
-            contact.customFields.find(
-                (field) => Number(field.field_id) === fieldId,
-            ) ?? null;
-        const value = field?.values?.[0]?.value;
-
-        if (!isStringOrNumber(value)) {
-            return null;
-        }
-
-        const numericValue = Number(value);
-
-        return Number.isFinite(numericValue) ? numericValue : null;
     }
 }
