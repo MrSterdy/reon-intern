@@ -9,6 +9,7 @@ import {
     RawAmoTaskListResponse,
     RawAmoTaskResponse,
     RawAmoTokenResponse,
+    RawAmoWebhookListResponse,
 } from './amo-api.types';
 
 const amoIdSchema = Joi.alternatives(Joi.number(), Joi.string()).required();
@@ -75,6 +76,15 @@ export const amoWebhookResponseSchema = Joi.object<AmoWebhookResponse>({
     disabled: Joi.boolean().required(),
     settings: Joi.array().items(Joi.string()).required(),
 }).unknown(true);
+
+export const amoWebhookListResponseSchema =
+    Joi.object<RawAmoWebhookListResponse>({
+        _embedded: Joi.object({
+            webhooks: Joi.array().items(amoWebhookResponseSchema).optional(),
+        })
+            .optional()
+            .unknown(true),
+    }).unknown(true);
 
 export const amoContactResponseSchema = Joi.object<RawAmoContactResponse>({
     id: amoIdSchema,

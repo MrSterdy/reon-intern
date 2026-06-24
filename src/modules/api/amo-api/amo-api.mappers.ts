@@ -6,12 +6,14 @@ import {
     AmoTaskListResponse,
     AmoTaskResponse,
     AmoTokenResponse,
+    AmoWebhookListResponse,
     RawAmoContactResponse,
     RawAmoCustomFieldListResponse,
     RawAmoLeadResponse,
     RawAmoTaskListResponse,
     RawAmoTaskResponse,
     RawAmoTokenResponse,
+    RawAmoWebhookListResponse,
 } from './amo-api.types';
 
 export function mapAmoTokenResponse(
@@ -42,6 +44,14 @@ export function mapAmoCustomFieldListResponse(
                 };
             },
         ),
+    };
+}
+
+export function mapAmoWebhookListResponse(
+    body: RawAmoWebhookListResponse,
+): AmoWebhookListResponse {
+    return {
+        webhooks: body._embedded?.webhooks ?? [],
     };
 }
 

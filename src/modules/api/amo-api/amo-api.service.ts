@@ -17,6 +17,7 @@ import {
     AmoTaskResponse,
     AmoTaskUpdatePayload,
     AmoTokenResponse,
+    AmoWebhookListResponse,
     AmoWebhookPayload,
     AmoWebhookResponse,
     RequestJsonStatusActions,
@@ -29,6 +30,7 @@ import {
     validateAmoTaskListResponse,
     validateAmoTaskResponse,
     validateAmoTokenResponse,
+    validateAmoWebhookListResponse,
     validateAmoWebhookResponse,
 } from './amo-api.validator';
 import { ENDPOINTS } from '../../../shared/constants/endpoints';
@@ -231,6 +233,35 @@ export class AmoApiService {
             },
             validateAmoWebhookResponse,
         );
+    }
+
+    public async getWebhooks(
+        referer: string,
+        accessToken: string,
+        destination?: string,
+    ): Promise<AmoWebhookResponse[]> {
+        const body = await this.requestJson<AmoWebhookListResponse>(
+            `${this.buildAccountBaseUrl(referer)}/api/v4/webhooks`,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                params:
+                    destination === undefined
+                        ? undefined
+                        : {
+                              'filter[destination]': destination,
+                          },
+            },
+            {
+                default: {
+                    errorMessage: 'amoCRM webhooks response is invalid',
+                },
+            },
+            validateAmoWebhookListResponse,
+        );
+
+        return body.webhooks;
     }
 
     public getContact(

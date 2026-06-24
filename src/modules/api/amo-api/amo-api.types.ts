@@ -76,7 +76,7 @@ export type AmoWebhookEvent =
 
 export type AmoWebhookPayload = {
     destination: string;
-    settings: AmoWebhookEvent[];
+    settings: string[];
 };
 
 export type AmoWebhookResponse = {
@@ -84,6 +84,16 @@ export type AmoWebhookResponse = {
     destination: string;
     disabled: boolean;
     settings: string[];
+};
+
+export type RawAmoWebhookListResponse = {
+    _embedded?: {
+        webhooks?: AmoWebhookResponse[];
+    };
+};
+
+export type AmoWebhookListResponse = {
+    webhooks: AmoWebhookResponse[];
 };
 
 export type RawAmoCustomFieldValue = {

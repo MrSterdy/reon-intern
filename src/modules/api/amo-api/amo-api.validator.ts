@@ -7,6 +7,7 @@ import {
     amoLeadResponseSchema,
     amoTaskListResponseSchema,
     amoTaskResponseSchema,
+    amoWebhookListResponseSchema,
     amoTokenResponseSchema,
     amoWebhookResponseSchema,
 } from './amo-api.schemas';
@@ -14,7 +15,9 @@ import {
     AmoAccountResponse,
     AmoApiResponseValidator,
     AmoResponseValidatorConfig,
+    AmoWebhookListResponse,
     AmoWebhookResponse,
+    RawAmoWebhookListResponse,
 } from './amo-api.types';
 import {
     mapAmoContactResponse,
@@ -23,6 +26,7 @@ import {
     mapAmoTaskListResponse,
     mapAmoTaskResponse,
     mapAmoTokenResponse,
+    mapAmoWebhookListResponse,
 } from './amo-api.mappers';
 
 const logger = new Logger('AmoApiValidator');
@@ -74,6 +78,14 @@ export const validateAmoWebhookResponse =
     createAmoResponseValidator<AmoWebhookResponse>({
         schema: amoWebhookResponseSchema,
     });
+
+export const validateAmoWebhookListResponse = createAmoResponseValidator<
+    AmoWebhookListResponse,
+    RawAmoWebhookListResponse
+>({
+    schema: amoWebhookListResponseSchema,
+    map: mapAmoWebhookListResponse,
+});
 
 export const validateAmoContactResponse = createAmoResponseValidator({
     schema: amoContactResponseSchema,
